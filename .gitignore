@@ -1,0 +1,9 @@
+# local-only tooling — never publish these
+tools/cloudflared.exe
+tools/tunnel.log
+tools/tunnel.log.out
+CURRENT-PHONE-LINK.txt
+node_modules/
+*.zip
+_mk.json
+_collabs.json
