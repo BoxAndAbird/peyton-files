@@ -56,6 +56,12 @@ profile persists, continue snapshot cleared.
 | Sanity | Watch bar drain; at 70/40/10 events fire; near entrance it recovers |
 | Death/Victory | `god` off, get killed → death screen with seed; `complete` x5 → victory |
 | Save/continue | Mid-run: Pause → Quit to Menu → Continue resumes stage/class/upgrades |
+| Boss: Burrower | Stage 1 exit room → fight starts (boss bar appears). Dodge the lunge → scars glow → hit it during the 2.5s exposed window |
+| Boss: Priest | Stage 2 (`stage 1` then walk, or `boss drowned_priest`). Phase 3: damage him during the chant to interrupt (long stagger) |
+| Boss: Ancient | `stage 4` → exit room. 5 phases; at 20% two altars appear — each gives a different victory ending |
+| Elite gauntlet | Stages 3/4 exit rooms spawn 4 scaled elites; gate opens when all die |
+| Sealed gate | Interact with the gate before winning the fight → "sealed" + fight starts |
+| Boss debug | `boss burrower` spawns any boss at the player; `boss start` triggers the stage climax; `kill_all` executes bosses too (opens the gate) |
 
 ## Debug console (` or F1)
 
@@ -76,10 +82,17 @@ melee/ranged combat, crits/burn/stagger, upgrades (23 in pool, 10/run),
 essence, sanity drain/recovery + 3 threshold events, HUD, damage numbers,
 subtitles, debug console.
 
+DONE (boss step): `BossBase` framework (phases, HP-bar signals, shared attack
+primitives: projectiles, telegraphed rings, falling rocks, hazard zones,
+summons) + **The Burrower** (burrow/lunge/exposed-scars), **The Drowned
+Priest** (bolts, floods, interruptible chant), **The Ancient Below** (5 phases:
+heart, fake-UI lies, player echoes, collapse, choice ending → two victory
+endings). Exit gates now seal until the arena boss / elite gauntlet (stages
+3-4) is cleared. HUD boss bar; `boss <id>` / `boss start` debug commands.
+
 NEXT (in bible build order):
-1. **BossBase.gd + The Burrower** (stage 1 boss arena, 3 phases) — request: `BossBase.gd`
-2. Inventory screen + item drops using the 120-item pool — request: `InventoryScreen.gd`
-3. Helper NPCs (Merchant shop first) — request: `HelperBase.gd`
-4. MusicDirector layered ambience/combat stems — request: `MusicDirector.gd`
-5. Sanity event scheduler w/ fake-UI + hallucination actors — request: `SanityEvents.gd`
-6. Species-specific enemy subclasses (Screamer cone, Bone Collector armor…)
+1. Inventory screen + item drops using the 120-item pool — request: `InventoryScreen.gd`
+2. Helper NPCs (Merchant shop first) — request: `HelperBase.gd`
+3. MusicDirector layered ambience/combat stems — request: `MusicDirector.gd`
+4. Sanity event scheduler w/ fake-UI + hallucination actors — request: `SanityEvents.gd`
+5. Species-specific enemy subclasses (Screamer cone, Bone Collector armor…)

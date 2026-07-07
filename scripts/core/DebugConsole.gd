@@ -105,7 +105,7 @@ func _run(cmd: String, args: PackedStringArray) -> void:
 	match cmd:
 		"help":
 			_println("Commands: help, fps, seed <n>, class <id>, startrun <class> [seed], "
-				+ "stage <n>, regen, complete, spawn <enemy> [count], boss <id>, "
+				+ "stage <n>, regen, complete, spawn <enemy> [count], boss <id|start>, "
 				+ "kill_all, heal [amt], god, sanity <0-100>, upgrade, give <item_id>, "
 				+ "essence <n>, list <classes|enemies|stages|upgrades>, menu, quit")
 		"fps":
@@ -136,7 +136,17 @@ func _run(cmd: String, args: PackedStringArray) -> void:
 		"spawn":
 			_cmd_spawn(args)
 		"boss":
-			_println("boss arenas arrive in the boss step; id noted: " + (args[0] if args.size() > 0 else "?"))
+			if args.size() == 0:
+				_println("usage: boss <burrower|drowned_priest|ancient_below> — or 'boss start' to trigger the stage climax")
+			elif GameManager.current_stage == null:
+				_println("no active stage")
+			elif args[0] == "start":
+				GameManager.current_stage.start_climax()
+				_println("stage climax triggered")
+			elif GameManager.current_stage.debug_spawn_boss(args[0]):
+				_println("boss spawned: " + args[0])
+			else:
+				_println("unknown boss: " + args[0])
 		"kill_all":
 			var k := 0
 			for e in get_tree().get_nodes_in_group("enemies"):

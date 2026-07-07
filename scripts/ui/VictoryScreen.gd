@@ -4,13 +4,17 @@ extends Control
 
 var _summary_lbl: Label
 var _menu_btn: Button
+var _headline: Label
+var _flavor: Label
 
 func _ready() -> void:
 	add_child(UIKit.background(Color(0.03, 0.05, 0.04, 0.95)))
 	var col := UIKit.center_column(12)
 	add_child(col)
-	col.add_child(UIKit.label("YOU SAW THE SKY AGAIN", 34, UIKit.ACCENT))
-	col.add_child(UIKit.subtitle("Or something wearing the sky. It is hard to say, now."))
+	_headline = UIKit.label("YOU SAW THE SKY AGAIN", 34, UIKit.ACCENT)
+	col.add_child(_headline)
+	_flavor = UIKit.subtitle("Or something wearing the sky. It is hard to say, now.")
+	col.add_child(_flavor)
 	_summary_lbl = UIKit.subtitle("")
 	_summary_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(_summary_lbl)
@@ -28,6 +32,19 @@ func _ready() -> void:
 func _on_run_ended(victory: bool, summary: Dictionary) -> void:
 	if not victory:
 		return
+	# Ending text depends on the final-boss choice (bible: Choice Ending).
+	match String(summary.get("ending", "")):
+		"shatter":
+			_headline.text = "THE HEART LIES SHATTERED"
+			_headline.add_theme_color_override("font_color", UIKit.ACCENT)
+			_flavor.text = "The cave is quiet. You climb toward a light that, this time, does not move away."
+		"hollow":
+			_headline.text = "THE HOLLOW WEARS YOUR NAME"
+			_headline.add_theme_color_override("font_color", UIKit.SANITY)
+			_flavor.text = "You are vast now. Somewhere far above, someone new picks up a lantern."
+		_:
+			_headline.text = "YOU SAW THE SKY AGAIN"
+			_flavor.text = "Or something wearing the sky. It is hard to say, now."
 	var cls := Database.get_class_data(String(summary.get("class_id", "swordsman")))
 	var t := float(summary.get("time", 0.0))
 	_summary_lbl.text = "%s escaped in %d:%02d\nUpgrades: %d   ·   Seed: %d\nVictories: %d   Best time: %d:%02d" % [

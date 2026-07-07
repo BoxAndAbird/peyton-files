@@ -28,6 +28,7 @@ var essence := 0
 var carry_health := -1.0              # -1 => full at next spawn
 var carry_sanity := 100.0
 var run_time := 0.0                   # seconds elapsed, for victory stats
+var ending_id := ""                   # set by the final boss choice ("shatter"/"hollow")
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -48,6 +49,7 @@ func start_new(new_class_id: String, new_seed := 0) -> void:
 	carry_health = -1.0
 	carry_sanity = 100.0
 	run_time = 0.0
+	ending_id = ""
 	run_active = true
 	SaveManager.record_run_started()
 	EventBus.run_started.emit(class_id, seed_value)
@@ -57,7 +59,7 @@ func end_run(victory: bool) -> void:
 	var summary := {
 		"class_id": class_id, "stage_index": stage_index,
 		"upgrades": upgrades.duplicate(), "seed": seed_value,
-		"time": run_time, "victory": victory,
+		"time": run_time, "victory": victory, "ending": ending_id,
 	}
 	if victory:
 		SaveManager.record_victory(run_time)

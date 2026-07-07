@@ -16,6 +16,15 @@ var _stage_lbl: Label
 var _prompt_lbl: Label
 var _dmg_layer: Control     # floating damage numbers live here
 
+# Boss bar (top center; bible: boss health bar signals via BossBase).
+var _boss_box: VBoxContainer
+var _boss_name: Label
+var _boss_bar: ProgressBar
+
+# fake_ui sanity event: the HUD briefly lies about health (visual only).
+var _lying := false
+var _real_health := Vector2(100, 100)   # x=cur y=max
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -72,6 +81,23 @@ func _ready() -> void:
 	_dmg_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_dmg_layer)
 
+	# --- boss bar (top center, hidden until a boss activates) -----------
+	_boss_box = VBoxContainer.new()
+	_boss_box.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_boss_box.offset_top = 18
+	_boss_box.offset_left = -260
+	_boss_box.offset_right = 260
+	_boss_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	_boss_box.visible = false
+	add_child(_boss_box)
+	_boss_name = UIKit.label("", 22, UIKit.DANGER)
+	_boss_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_boss_name.add_theme_color_override("font_outline_color", Color.BLACK)
+	_boss_name.add_theme_constant_override("outline_size", 6)
+	_boss_box.add_child(_boss_name)
+	_boss_bar = UIKit.bar(UIKit.DANGER, 520)
+	_boss_box.add_child(_boss_bar)
+
 	# --- signals ---------------------------------------------------------
 	EventBus.player_health_changed.connect(_on_health)
 	EventBus.player_stamina_changed.connect(_on_stamina)
@@ -79,12 +105,19 @@ func _ready() -> void:
 	EventBus.essence_gained.connect(_on_essence)
 	EventBus.stage_loaded.connect(_on_stage)
 	EventBus.damage_dealt.connect(_on_damage)
+	EventBus.boss_started.connect(_on_boss_started)
+	EventBus.boss_health_changed.connect(_on_boss_health)
+	EventBus.boss_defeated.connect(_on_boss_defeated)
+	EventBus.sanity_event_started.connect(_on_sanity_event)
 
 func _label_over(text: String) -> Label:
 	return UIKit.label(text, 11, UIKit.MUTED)
 
 # --- signal handlers ---------------------------------------------------
 func _on_health(cur: float, mx: float) -> void:
+	_real_health = Vector2(cur, mx)
+	if _lying:
+		return   # fake_ui event owns the bar right now; real value restored after
 	_health_bar.max_value = mx
 	_health_bar.value = cur
 
@@ -112,6 +145,36 @@ func set_objective(text: String) -> void:
 ## Public: PlayerController shows/hides the interaction prompt.
 func set_prompt(text: String) -> void:
 	_prompt_lbl.text = text
+
+# --- boss bar ------------------------------------------------------------
+func _on_boss_started(boss_id: String) -> void:
+	var data: Dictionary = Database.BOSSES.get(boss_id, {})
+	_boss_name.text = String(data.get("name", "???"))
+	_boss_bar.max_value = float(data.get("hp", 100.0))
+	_boss_bar.value = _boss_bar.max_value
+	_boss_box.visible = true
+	set_objective("Survive: " + _boss_name.text)
+
+func _on_boss_health(cur: float, mx: float) -> void:
+	_boss_bar.max_value = mx
+	_boss_bar.value = cur
+
+func _on_boss_defeated(_boss_id: String) -> void:
+	_boss_box.visible = false
+
+# --- fake_ui sanity event: the health bar lies for ~1.2s (visual only) ----
+func _on_sanity_event(event_id: String) -> void:
+	if event_id != "fake_ui" or _lying:
+		return
+	_lying = true
+	var fake := randf_range(0.05, 0.95) * _real_health.y
+	var tw := create_tween()
+	tw.tween_property(_health_bar, "value", fake, 0.15)
+	tw.tween_interval(1.2)
+	tw.tween_callback(func():
+		_lying = false
+		_health_bar.max_value = _real_health.y
+		_health_bar.value = _real_health.x)
 
 func _on_damage(_source: Node, target: Node, amount: float, is_crit: bool) -> void:
 	if not SettingsManager.damage_numbers_on():

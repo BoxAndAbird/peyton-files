@@ -29,6 +29,12 @@ var _geometry_root: Node3D
 var _floor_mat: StandardMaterial3D
 var _wall_mat: StandardMaterial3D
 
+# --- stage climax (boss arena or elite gauntlet in the exit room) -----
+var arena_cleared := false           # gate opens only when true
+var _fight_started := false
+var _boss = null                     # BossBase subclass (untyped: duck calls)
+var _gauntlet_ids: Array = []        # instance ids of gauntlet elites
+
 # =====================================================================
 #  BUILD PIPELINE
 # =====================================================================
@@ -44,6 +50,7 @@ func build(p_stage_data: Dictionary, rng: RandomNumberGenerator) -> void:
 	_build_room_lights_and_props()
 	_build_navigation()
 	_place_exit_gate()
+	_place_arena_trigger()
 	_place_pickups()
 	_spawn_enemies()
 	EventBus.say("Stage '%s' built: %d rooms, %d cells." % [stage_data["id"], graph.rooms.size(), carved.size()])
@@ -56,6 +63,8 @@ func _carve_rooms() -> void:
 		var hh := _rng.randi_range(2, 3)
 		if r["role"] == "entrance" or r["role"] == "exit":
 			hw = 3; hh = 3                 # key rooms are always roomy
+		if r["role"] == "exit" and String(stage_data.get("boss", "")) != "":
+			hw = 4; hh = 4                 # boss arenas need dodge space (~18m)
 		room_rects[r["id"]] = Rect2i(center - Vector2i(hw, hh), Vector2i(hw * 2 + 1, hh * 2 + 1))
 		for x in range(center.x - hw, center.x + hw + 1):
 			for y in range(center.y - hh, center.y + hh + 1):
@@ -263,11 +272,107 @@ func _place_exit_gate() -> void:
 	var Interactable := load("res://scripts/items/Interactable.gd")
 	var gate = Interactable.new()   # untyped: setup/on_interact are script members
 	gate.setup("Open the descent gate", Color(0.95, 0.5, 0.15), Vector3(1.6, 2.6, 0.5))
-	gate.position = _room_center(graph.get_exit()["id"])
+	# Gate sits at the arena's far edge so the climax owns the room center.
+	var rect: Rect2i = room_rects[graph.get_exit()["id"]]
+	var edge := (rect.size.y / 2 - 1) * CELL
+	gate.position = _room_center(graph.get_exit()["id"]) + Vector3(0, 0, -edge)
+	gate.one_shot = false           # stays interactable while sealed
 	gate.on_interact = func(_player):
-		EventBus.say("Exit gate opened.")
-		GameManager.complete_stage()
+		if arena_cleared:
+			EventBus.say("Exit gate opened.")
+			GameManager.complete_stage()
+		else:
+			EventBus.subtitle_requested.emit("The gate is sealed. Something guards it.", 2.5)
+			AudioManager.play_ui("denied")
+			start_climax()
 	add_child(gate)
+
+# =====================================================================
+#  STAGE CLIMAX: boss arena (stages with a boss id) or elite gauntlet
+# =====================================================================
+## Invisible trigger over the exit room: entering starts the fight.
+func _place_arena_trigger() -> void:
+	var trigger := Area3D.new()
+	trigger.collision_layer = 0
+	trigger.collision_mask = 0b10    # player
+	trigger.monitoring = true
+	var col := CollisionShape3D.new()
+	var shape := SphereShape3D.new()
+	var rect: Rect2i = room_rects[graph.get_exit()["id"]]
+	shape.radius = maxf(rect.size.x, rect.size.y) * CELL * 0.35
+	col.shape = shape
+	trigger.add_child(col)
+	trigger.position = _room_center(graph.get_exit()["id"]) + Vector3.UP
+	trigger.body_entered.connect(func(body: Node3D):
+		if body.is_in_group("player"):
+			start_climax())
+	add_child(trigger)
+
+func start_climax() -> void:
+	if _fight_started or arena_cleared:
+		return
+	_fight_started = true
+	var center := _room_center(graph.get_exit()["id"])
+	_light_arena(center)
+	var boss_id := String(stage_data.get("boss", ""))
+	if boss_id != "":
+		var BossBase := load("res://scripts/bosses/BossBase.gd")
+		_boss = BossBase.create(boss_id)
+		if _boss == null:
+			arena_cleared = true    # never trap the player behind a bug
+			return
+		add_child(_boss)
+		_boss.global_position = center + Vector3(0, 0.5, 2.0)
+		_boss.setup_boss(boss_id)
+		_boss.on_defeated = _on_climax_cleared
+		_boss.activate()
+	else:
+		_start_gauntlet(center)
+
+## Elite gauntlet (bible: stages 3/4 use elite gauntlets instead of bosses).
+func _start_gauntlet(center: Vector3) -> void:
+	EventBus.subtitle_requested.emit("Elites guard the descent.", 3.0)
+	EventBus.combat_state_changed.emit(true)
+	var EnemyBase := load("res://scripts/enemies/EnemyBase.gd")
+	var pool: Array = stage_data["enemy_pool"]
+	if not EventBus.enemy_died.is_connected(_on_gauntlet_death):
+		EventBus.enemy_died.connect(_on_gauntlet_death)
+	for i in range(4):
+		var eid: String = pool[_rng.randi_range(0, pool.size() - 1)]
+		var e = EnemyBase.new()
+		add_child(e)
+		e.global_position = center + Vector3(_rng.randf_range(-4, 4), 0.5, _rng.randf_range(-4, 4))
+		# Elites: +1 stage of scaling and a bigger silhouette.
+		e.setup(eid, RunManager.stage_index + 1)
+		e.scale = Vector3(1.25, 1.25, 1.25)
+		_gauntlet_ids.append(e.get_instance_id())
+		EventBus.enemy_spawned.emit(e)
+
+func _on_gauntlet_death(enemy: Node, _pos: Vector3) -> void:
+	var id := enemy.get_instance_id()
+	if _gauntlet_ids.has(id):
+		_gauntlet_ids.erase(id)
+		if _gauntlet_ids.is_empty():
+			_on_climax_cleared()
+
+func _on_climax_cleared() -> void:
+	arena_cleared = true
+	EventBus.subtitle_requested.emit("The gate grinds open.", 3.0)
+	AudioManager.play("pickup", "SFX", 0.7)
+	var hud = GameManager.ui.get_hud() if GameManager.ui else null
+	if hud:
+		hud.set_objective("The way down is open. Reach the gate.")
+
+## Boss arenas must stay readable (bible section 19): rim lights on start.
+func _light_arena(center: Vector3) -> void:
+	for offset in [Vector3(-6, 3, -6), Vector3(6, 3, -6), Vector3(-6, 3, 6), Vector3(6, 3, 6)]:
+		var l := OmniLight3D.new()
+		l.omni_range = 9.0
+		l.light_energy = 0.9
+		l.light_color = Color(stage_data["light_tint"]).lightened(0.2)
+		l.shadow_enabled = false
+		l.position = center + offset
+		add_child(l)
 
 func _place_pickups() -> void:
 	var Pickup := load("res://scripts/items/Pickup.gd")
@@ -321,3 +426,18 @@ func debug_spawn_enemy(eid: String) -> void:
 	if GameManager.player:
 		pos = GameManager.player.global_position + Vector3(2.5, 0.2, 2.5)
 	_spawn_enemy_at(eid, pos)
+
+## DebugConsole hook: spawn and activate any boss near the player.
+func debug_spawn_boss(boss_id: String) -> bool:
+	var BossBase := load("res://scripts/bosses/BossBase.gd")
+	var b = BossBase.create(boss_id)
+	if b == null:
+		return false
+	add_child(b)
+	var pos := get_spawn_point() + Vector3(6, 0.5, 0)
+	if GameManager.player:
+		pos = GameManager.player.global_position + Vector3(7.0, 0.5, 0.0)
+	b.global_position = pos
+	b.setup_boss(boss_id)
+	b.activate()
+	return true

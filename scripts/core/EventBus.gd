@@ -49,6 +49,7 @@ signal item_picked_up(item_id: String)
 signal inventory_changed(slots: Dictionary)
 signal boss_started(boss_id: String)
 signal boss_phase_changed(boss_id: String, phase: int)
+signal boss_health_changed(current: float, maximum: float)
 signal boss_defeated(boss_id: String)
 
 # --- Settings / audio ------------------------------------------------------

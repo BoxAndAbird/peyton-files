@@ -66,10 +66,11 @@ func _melee_swing() -> void:
 	var wep := Database.get_weapon(Database.get_class_data(stats.class_id)["weapon"])
 	var reach: float = wep["reach"]
 	# Active frames: 0.12s window starting 0.08s after input (windup).
-	var windup := get_tree().create_timer(0.08)
+	# create_timer(..., false): respect pause, or hits could land mid-pause.
+	var windup := get_tree().create_timer(0.08, false)
 	windup.timeout.connect(func():
 		_do_melee_hits(reach)
-		var recover := get_tree().create_timer(0.12)
+		var recover := get_tree().create_timer(0.12, false)
 		recover.timeout.connect(func(): _swing_active = false))
 
 func _do_melee_hits(reach: float) -> void:
@@ -83,8 +84,12 @@ func _do_melee_hits(reach: float) -> void:
 			continue
 		var to: Vector3 = e3.global_position - origin
 		to.y = 0.0
+		# Big bodies (bosses) widen effective reach via the hit_radius meta.
+		var pad := 0.6
+		if e3.has_meta("hit_radius"):
+			pad += float(e3.get_meta("hit_radius"))
 		# In reach and within a ~100 degree frontal arc.
-		if to.length() <= reach + 0.6 and forward.dot(to.normalized()) > 0.34:
+		if to.length() <= reach + pad and forward.dot(to.normalized()) > 0.34:
 			_swing_hit_targets.append(e3)
 			_apply_hit(e3, 1.0)
 

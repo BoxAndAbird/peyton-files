@@ -169,16 +169,24 @@ const BOSSES := {
 		"name": "The Burrower", "hp": 900, "stage": 0,
 		"phases": [1.0, 0.67, 0.34],
 		"desc": "Massive blind worm that teaches arena awareness.",
+		"script": "res://scripts/bosses/Burrower.gd",
+		"tuning": {"lunge_dmg": 26.0, "sweep_dmg": 18.0, "rock_dmg": 22.0,
+			"burrow_speed": 6.0, "exposed_time": 2.5},
 	},
 	"drowned_priest": {
 		"name": "The Drowned Priest", "hp": 1200, "stage": 1,
 		"phases": [1.0, 0.67, 0.34],
 		"desc": "Corpse-priest controlling underground water.",
+		"script": "res://scripts/bosses/DrownedPriest.gd",
+		"tuning": {"bolt_dmg": 16.0, "slam_dmg": 24.0, "nova_dmg": 45.0,
+			"flood_dps": 10.0, "chant_interrupt": 60.0},
 	},
 	"ancient_below": {
 		"name": "The Ancient Below", "hp": 2600, "stage": 4,
 		"phases": [1.0, 0.8, 0.6, 0.4, 0.2],
 		"desc": "Cave intelligence using the player's own memories.",
+		"script": "res://scripts/bosses/AncientBelow.gd",
+		"tuning": {"shard_dmg": 15.0, "bolt_dmg": 20.0, "rock_dmg": 26.0},
 	},
 }
 

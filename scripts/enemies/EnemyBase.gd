@@ -298,7 +298,8 @@ func _move_toward(target: Vector3, speed: float, _delta: float) -> void:
 func _begin_attack(player: Node3D) -> void:
 	_flash(Color(1.0, 0.5, 0.3))   # telegraph (bible: clear windups)
 	AudioManager.play_at("dodge", global_position, get_parent(), 0.7)
-	var windup := get_tree().create_timer(ATTACK_WINDUP)
+	# create_timer(..., false): respect pause so windups never land mid-pause.
+	var windup := get_tree().create_timer(ATTACK_WINDUP, false)
 	windup.timeout.connect(func():
 		if state == AIState.DEAD or GameManager.player == null:
 			return
@@ -347,7 +348,7 @@ func _process_burn(delta: float) -> void:
 func _flash(color: Color) -> void:
 	if _mat:
 		_mat.albedo_color = color
-		var t := get_tree().create_timer(0.12)
+		var t := get_tree().create_timer(0.12, false)
 		t.timeout.connect(func():
 			if _mat and state != AIState.DEAD:
 				_mat.albedo_color = data["color"])
