@@ -204,6 +204,20 @@ func die() -> void:
 		p.setup("essence", 8.0)
 		get_parent().add_child(p)
 		p.global_position = global_position + Vector3(randf_range(-2, 2), 0.5, randf_range(-2, 2))
+	# Guaranteed equipment drop; commons are rerolled once (boss-tier loot).
+	var luck := 0.0
+	var pl = GameManager.player
+	if pl and pl.stats:
+		luck = pl.stats.stat("luck")
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var iid := Database.roll_item_id(rng, luck)
+	if String(Database.get_item(iid).get("rarity", "")) == "common":
+		iid = Database.roll_item_id(rng, luck)
+	var ip = Pickup.new()
+	ip.setup_item(iid)
+	get_parent().add_child(ip)
+	ip.global_position = global_position + Vector3(0, 0.5, -1.5)
 	if on_defeated.is_valid():
 		on_defeated.call()
 	collision_layer = 0

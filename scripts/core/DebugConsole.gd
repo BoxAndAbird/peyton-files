@@ -177,7 +177,18 @@ func _run(cmd: String, args: PackedStringArray) -> void:
 			var up = GameManager.ui.get_screen("upgrade")
 			if up and up.has_method("offer"): up.offer()
 		"give":
-			if args.size() > 0: EventBus.item_picked_up.emit(args[0]); _println("gave " + args[0])
+			if args.size() == 0:
+				_println("usage: give <item_id|random>  (ids: item_001..item_120)")
+			else:
+				var iid := args[0]
+				if iid == "random":
+					var rng := RandomNumberGenerator.new()
+					rng.randomize()
+					iid = Database.roll_item_id(rng, 10.0)
+				if RunManager.add_item(iid):
+					_println("gave " + iid)
+				else:
+					_println("unknown item or pack full: " + iid)
 		"essence":
 			if args.size() > 0: RunManager.add_essence(int(args[0])); _println("essence = %d" % RunManager.essence)
 		"list":

@@ -240,21 +240,33 @@ const RARITY_COLORS := {
 	"legendary": Color(0.95,0.75,0.35), "cursed": Color(0.85,0.3,0.35),
 }
 const RARITY_MULT := {"common":1.0,"uncommon":1.4,"rare":2.0,"epic":2.8,"legendary":3.8,"cursed":2.4}
+# Base drop weights per rarity. Luck multiplies the above-common tiers but is
+# soft-capped (bible: "never let luck guarantee legendaries").
+const RARITY_WEIGHTS := {
+	"common": 40.0, "uncommon": 25.0, "rare": 16.0,
+	"epic": 9.0, "legendary": 4.0, "cursed": 6.0,
+}
 
 # ---------------------------------------------------------------------
 #  ITEM POOL  (generated: 10 archetypes x 12 = 120, following the doc).
 # ---------------------------------------------------------------------
 var items: Array = []
+var _items_by_rarity: Dictionary = {}   # rarity -> Array of item dicts
+var _items_by_id: Dictionary = {}       # id -> item dict
 
 func _ready() -> void:
 	_build_item_pool()
 
 func _build_item_pool() -> void:
 	items.clear()
+	_items_by_rarity.clear()
+	_items_by_id.clear()
+	for r in RARITIES:
+		_items_by_rarity[r] = []
 	for i in range(120):
 		var base: Dictionary = ITEM_BASES[i % ITEM_BASES.size()]
 		var rarity: String = RARITIES[i % RARITIES.size()]
-		items.append({
+		var item := {
 			"id": "item_%03d" % (i + 1),
 			"name": "%s %d" % [base["name"], i + 1],
 			"slot": base["slot"],
@@ -262,7 +274,36 @@ func _build_item_pool() -> void:
 			"stat": base["stat"],
 			"stat_value": int(round(RARITY_MULT[rarity])),
 			"note": base["note"],
-		})
+		}
+		items.append(item)
+		_items_by_rarity[rarity].append(item)
+		_items_by_id[item["id"]] = item
+
+## Item lookup that never crashes (empty dict for unknown ids).
+func get_item(id: String) -> Dictionary:
+	return _items_by_id.get(id, {})
+
+## Luck-weighted random item id. Higher luck shifts weight toward better
+## rarities with diminishing returns; commons always keep some weight.
+func roll_item_id(rng: RandomNumberGenerator, luck: float) -> String:
+	var boost := 1.0 + clampf(luck, 0.0, 20.0) * 0.05
+	var weights := {}
+	var total := 0.0
+	for r in RARITIES:
+		var w: float = RARITY_WEIGHTS[r]
+		if r != "common":
+			w *= boost
+		weights[r] = w
+		total += w
+	var roll := rng.randf() * total
+	var rarity: String = "common"
+	for r in RARITIES:
+		roll -= weights[r]
+		if roll <= 0.0:
+			rarity = r
+			break
+	var pool: Array = _items_by_rarity[rarity]
+	return pool[rng.randi_range(0, pool.size() - 1)]["id"]
 
 # =====================================================================
 #  STAT FORMULAS  (bible section 5) - pure functions, used everywhere.

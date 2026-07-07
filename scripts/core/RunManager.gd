@@ -22,7 +22,11 @@ var class_id := "swordsman"
 var stage_index := 0
 var upgrades: Array[String] = []      # chosen upgrade ids, capped at TOTAL_UPGRADES
 var equipped: Dictionary = {}         # slot -> item_id (5 slots)
+var backpack: Array = []              # unequipped item ids (cap below)
 var essence := 0
+
+const BACKPACK_CAP := 10
+const SLOT_ORDER := ["weapon", "armor", "relic", "accessory", "consumable"]
 
 # Persistent-across-stages resource state (health/sanity carry over).
 var carry_health := -1.0              # -1 => full at next spawn
@@ -45,6 +49,7 @@ func start_new(new_class_id: String, new_seed := 0) -> void:
 	stage_index = 0
 	upgrades.clear()
 	equipped = {"weapon": "", "armor": "", "relic": "", "accessory": "", "consumable": ""}
+	backpack.clear()
 	essence = 0
 	carry_health = -1.0
 	carry_sanity = 100.0
@@ -133,11 +138,60 @@ func add_essence(amount: int) -> void:
 	essence += amount
 	EventBus.essence_gained.emit(amount)
 
+# --- Items (5 equip slots + backpack; bible sections 13, 15) ---------
+## Returns false when the pack is full (pickup stays in the world).
+func add_item(item_id: String) -> bool:
+	if backpack.size() >= BACKPACK_CAP:
+		return false
+	var item := Database.get_item(item_id)
+	if item.is_empty():
+		return false
+	backpack.append(item_id)
+	SaveManager.statistics["items_collected"] = int(SaveManager.statistics["items_collected"]) + 1
+	EventBus.item_picked_up.emit(item_id)
+	EventBus.inventory_changed.emit(equipped.duplicate())
+	EventBus.subtitle_requested.emit("Found: %s (%s)" % [item["name"], String(item["rarity"]).capitalize()], 2.0)
+	return true
+
+## Equip from backpack into the item's slot; the displaced item returns to
+## the backpack. Recalculates player stats immediately.
+func equip_item(item_id: String) -> void:
+	if not backpack.has(item_id):
+		return
+	var item := Database.get_item(item_id)
+	if item.is_empty():
+		return
+	var slot := String(item["slot"])
+	backpack.erase(item_id)
+	var old := String(equipped.get(slot, ""))
+	if old != "":
+		backpack.append(old)
+	equipped[slot] = item_id
+	_after_inventory_change()
+
+func unequip_slot(slot: String) -> void:
+	var old := String(equipped.get(slot, ""))
+	if old == "" or backpack.size() >= BACKPACK_CAP:
+		return
+	equipped[slot] = ""
+	backpack.append(old)
+	_after_inventory_change()
+
+func drop_item(item_id: String) -> void:
+	backpack.erase(item_id)
+	_after_inventory_change()
+
+func _after_inventory_change() -> void:
+	if GameManager.player and GameManager.player.has_method("recalculate_stats"):
+		GameManager.player.recalculate_stats()
+	EventBus.inventory_changed.emit(equipped.duplicate())
+
 # --- Continue snapshot ----------------------------------------------
 func to_snapshot() -> Dictionary:
 	return {
 		"seed": seed_value, "class_id": class_id, "stage_index": stage_index,
 		"upgrades": upgrades.duplicate(), "equipped": equipped.duplicate(),
+		"backpack": backpack.duplicate(),
 		"essence": essence, "carry_health": carry_health,
 		"carry_sanity": carry_sanity, "run_time": run_time,
 	}
@@ -149,6 +203,7 @@ func from_snapshot(s: Dictionary) -> void:
 	stage_index = int(s.get("stage_index", 0))
 	upgrades.assign(s.get("upgrades", []))
 	equipped = s.get("equipped", {})
+	backpack = s.get("backpack", [])
 	essence = int(s.get("essence", 0))
 	carry_health = float(s.get("carry_health", -1.0))
 	carry_sanity = float(s.get("carry_sanity", 100.0))

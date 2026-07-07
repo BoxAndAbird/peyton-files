@@ -366,6 +366,19 @@ func die() -> void:
 	p.setup("essence", float(data["threat"]) * 2.0)
 	get_parent().add_child(p)
 	p.global_position = global_position + Vector3.UP * 0.3
+	# Equipment drop chance: base 8%, nudged by player Luck (bible: luck
+	# improves loot, never guarantees it).
+	var luck := 0.0
+	var pl = GameManager.player
+	if pl and pl.stats:
+		luck = pl.stats.stat("luck")
+	if randf() < 0.08 + luck * 0.006:
+		var rng := RandomNumberGenerator.new()
+		rng.randomize()
+		var ip = Pickup.new()
+		ip.setup_item(Database.roll_item_id(rng, luck))
+		get_parent().add_child(ip)
+		ip.global_position = global_position + Vector3(0.8, 0.3, 0.4)
 	# Collapse then clean up.
 	collision_layer = 0
 	remove_from_group("enemies")

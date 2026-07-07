@@ -11,7 +11,7 @@ extends Node
 ## Everything else talks to GameManager through these + EventBus.
 
 enum State { BOOT, TITLE, MAIN_MENU, CLASS_SELECT, SETTINGS, PLAYING, PAUSED,
-	UPGRADE, DEATH, VICTORY }
+	UPGRADE, DEATH, VICTORY, INVENTORY }
 
 var state: int = State.BOOT
 var world: Node3D                 # gameplay container (set by Main)
@@ -61,6 +61,10 @@ func change_state(new_state: int) -> void:
 			get_tree().paused = true
 			_capture_mouse(false)
 			ui.show_screen("upgrade")
+		State.INVENTORY:
+			get_tree().paused = true
+			_capture_mouse(false)
+			ui.show_screen("inventory")
 		State.DEATH:
 			get_tree().paused = true
 			_capture_mouse(false)
@@ -82,6 +86,25 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif state == State.PAUSED:
 			resume()
 			get_viewport().set_input_as_handled()
+		elif state == State.INVENTORY:
+			close_inventory()
+			get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("inventory"):
+		if state == State.PLAYING:
+			open_inventory()
+			get_viewport().set_input_as_handled()
+		elif state == State.INVENTORY:
+			close_inventory()
+			get_viewport().set_input_as_handled()
+
+func open_inventory() -> void:
+	change_state(State.INVENTORY)
+
+func close_inventory() -> void:
+	if state != State.INVENTORY:
+		return
+	ui.hide_screen("inventory")
+	change_state(State.PLAYING)
 
 func toggle_pause() -> void:
 	if state == State.PLAYING:

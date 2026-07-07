@@ -62,6 +62,9 @@ profile persists, continue snapshot cleared.
 | Elite gauntlet | Stages 3/4 exit rooms spawn 4 scaled elites; gate opens when all die |
 | Sealed gate | Interact with the gate before winning the fight → "sealed" + fight starts |
 | Boss debug | `boss burrower` spawns any boss at the player; `boss start` triggers the stage climax; `kill_all` executes bosses too (opens the gate) |
+| Items drop | Loot/secret rooms hold a rarity-colored crate; enemies drop gear ~8% (+Luck); bosses always drop non-common gear |
+| Inventory | Tab opens Pack & Equipment (game pauses). Equip/Unequip/Drop; stats apply instantly; pack caps at 10 (full pack leaves crates in the world) |
+| Item debug | `give random` (luck-boosted roll) or `give item_035`; equip via Tab |
 
 ## Debug console (` or F1)
 
@@ -90,9 +93,15 @@ heart, fake-UI lies, player echoes, collapse, choice ending → two victory
 endings). Exit gates now seal until the arena boss / elite gauntlet (stages
 3-4) is cleared. HUD boss bar; `boss <id>` / `boss start` debug commands.
 
+DONE (inventory step): the 120-item pool now drops in-world (loot/secret
+rooms guaranteed + seeded; enemies ~8% luck-scaled; bosses guaranteed
+non-common), luck-weighted rarity rolling in `Database.roll_item_id`,
+backpack (cap 10) + 5 equip slots in RunManager (persisted in the continue
+snapshot), and the Tab `InventoryScreen` with equip/unequip/drop and stat
+comparison. Stats from equipped gear apply instantly via StatsComponent.
+
 NEXT (in bible build order):
-1. Inventory screen + item drops using the 120-item pool — request: `InventoryScreen.gd`
-2. Helper NPCs (Merchant shop first) — request: `HelperBase.gd`
-3. MusicDirector layered ambience/combat stems — request: `MusicDirector.gd`
-4. Sanity event scheduler w/ fake-UI + hallucination actors — request: `SanityEvents.gd`
-5. Species-specific enemy subclasses (Screamer cone, Bone Collector armor…)
+1. Helper NPCs (Merchant shop first) — request: `HelperBase.gd`
+2. MusicDirector layered ambience/combat stems — request: `MusicDirector.gd`
+3. Sanity event scheduler w/ fake-UI + hallucination actors — request: `SanityEvents.gd`
+4. Species-specific enemy subclasses (Screamer cone, Bone Collector armor…)

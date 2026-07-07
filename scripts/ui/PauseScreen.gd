@@ -18,6 +18,12 @@ func _ready() -> void:
 		GameManager.resume())
 	col.add_child(_resume_btn)
 
+	var inv := UIKit.button("Pack & Equipment")
+	inv.pressed.connect(func():
+		visible = false
+		GameManager.open_inventory())
+	col.add_child(inv)
+
 	var settings := UIKit.button("Settings")
 	settings.pressed.connect(func(): GameManager.open_settings())
 	col.add_child(settings)

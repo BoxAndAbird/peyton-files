@@ -381,7 +381,7 @@ func _place_pickups() -> void:
 	heal.setup("heal", 30.0)
 	heal.position = get_spawn_point() + Vector3(2.0, 0.5, 1.0)
 	add_child(heal)
-	# Loot + secret rooms: essence clusters.
+	# Loot + secret rooms: essence clusters + one guaranteed equipment drop.
 	for r in graph.rooms:
 		if r["role"] == "loot" or r["role"] == "secret":
 			for i in range(_rng.randi_range(2, 4)):
@@ -392,6 +392,11 @@ func _place_pickups() -> void:
 					_rng.randf_range(-rect.size.x * 0.3, rect.size.x * 0.3) * CELL * 0.4, 0.5,
 					_rng.randf_range(-rect.size.y * 0.3, rect.size.y * 0.3) * CELL * 0.4)
 				add_child(p)
+			# Deterministic (seeded) item so runs are reproducible.
+			var ip = Pickup.new()
+			ip.setup_item(Database.roll_item_id(_rng, 0.0))
+			ip.position = _room_center(r["id"]) + Vector3(0, 0.4, 1.2)
+			add_child(ip)
 
 # --- enemies (threat budget per combat room; bible section 7) ------------
 func _spawn_enemies() -> void:
