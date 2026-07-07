@@ -30,6 +30,7 @@ SaveManager="*res://scripts/core/SaveManager.gd"
 RunManager="*res://scripts/core/RunManager.gd"
 GameManager="*res://scripts/core/GameManager.gd"
 DebugConsole="*res://scripts/core/DebugConsole.gd"
+MusicDirector="*res://scripts/audio/MusicDirector.gd"
 
 [display]
 

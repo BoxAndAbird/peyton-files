@@ -37,6 +37,7 @@ func _build_screens() -> void:
 		"hud":          "res://scripts/ui/HUDScreen.gd",
 		"pause":        "res://scripts/ui/PauseScreen.gd",
 		"inventory":    "res://scripts/ui/InventoryScreen.gd",
+		"shop":         "res://scripts/ui/ShopScreen.gd",
 		"upgrade":      "res://scripts/ui/UpgradeScreen.gd",
 		"death":        "res://scripts/ui/DeathScreen.gd",
 		"victory":      "res://scripts/ui/VictoryScreen.gd",

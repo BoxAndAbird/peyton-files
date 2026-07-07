@@ -52,6 +52,7 @@ func build(p_stage_data: Dictionary, rng: RandomNumberGenerator) -> void:
 	_place_exit_gate()
 	_place_arena_trigger()
 	_place_pickups()
+	_place_helper()
 	_spawn_enemies()
 	EventBus.say("Stage '%s' built: %d rooms, %d cells." % [stage_data["id"], graph.rooms.size(), carved.size()])
 
@@ -424,6 +425,35 @@ func _spawn_enemy_at(eid: String, pos: Vector3) -> void:
 	e.global_position = pos + Vector3.UP * 0.5
 	e.setup(eid, RunManager.stage_index)
 	EventBus.enemy_spawned.emit(e)
+
+## One seeded helper NPC in the "helper" room (bible section 14). Rooms may
+## roll zero helper rooms — then the stage simply has no helper.
+func _place_helper() -> void:
+	for r in graph.rooms:
+		if r["role"] != "helper":
+			continue
+		var HelperBase := load("res://scripts/helpers/HelperBase.gd")
+		var ids := ["merchant", "medic", "cartographer", "child"]
+		var h = HelperBase.new()   # untyped: setup() is a script member
+		add_child(h)
+		h.position = _room_center(r["id"]) + Vector3(1.5, 0, 0)
+		h.setup(ids[_rng.randi_range(0, ids.size() - 1)], _rng)
+		return   # never more than one per stage
+
+## Announce the exit direction (Cartographer NPC + Cartographer Mark upgrade).
+func reveal_exit_direction() -> void:
+	var pl = GameManager.player
+	if pl == null:
+		return
+	var exit_pos := _room_center(graph.get_exit()["id"])
+	var to: Vector3 = exit_pos - pl.global_position
+	var dirs := ["east", "north-east", "north", "north-west", "west", "south-west", "south", "south-east"]
+	var ang := fposmod(atan2(-to.z, to.x), TAU)
+	var compass: String = dirs[int(round(ang / (TAU / 8.0))) % 8]
+	EventBus.subtitle_requested.emit("The descent gate lies to the %s, %d paces." % [compass, int(to.length())], 4.0)
+	var hud = GameManager.ui.get_hud() if GameManager.ui else null
+	if hud:
+		hud.set_objective("Exit: %s, ~%dm" % [compass, int(to.length())])
 
 ## DebugConsole hook: spawn an enemy near the player.
 func debug_spawn_enemy(eid: String) -> void:

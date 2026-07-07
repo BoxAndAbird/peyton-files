@@ -11,7 +11,7 @@ extends Node
 ## Everything else talks to GameManager through these + EventBus.
 
 enum State { BOOT, TITLE, MAIN_MENU, CLASS_SELECT, SETTINGS, PLAYING, PAUSED,
-	UPGRADE, DEATH, VICTORY, INVENTORY }
+	UPGRADE, DEATH, VICTORY, INVENTORY, SHOP }
 
 var state: int = State.BOOT
 var world: Node3D                 # gameplay container (set by Main)
@@ -65,6 +65,10 @@ func change_state(new_state: int) -> void:
 			get_tree().paused = true
 			_capture_mouse(false)
 			ui.show_screen("inventory")
+		State.SHOP:
+			get_tree().paused = true
+			_capture_mouse(false)
+			ui.show_screen("shop")
 		State.DEATH:
 			get_tree().paused = true
 			_capture_mouse(false)
@@ -89,6 +93,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif state == State.INVENTORY:
 			close_inventory()
 			get_viewport().set_input_as_handled()
+		elif state == State.SHOP:
+			close_shop()
+			get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("inventory"):
 		if state == State.PLAYING:
 			open_inventory()
@@ -104,6 +111,19 @@ func close_inventory() -> void:
 	if state != State.INVENTORY:
 		return
 	ui.hide_screen("inventory")
+	change_state(State.PLAYING)
+
+## Helper NPCs call this via their interact() (HelperBase).
+func open_shop(helper) -> void:
+	change_state(State.SHOP)
+	var shop = ui.get_screen("shop")
+	if shop and shop.has_method("open_for"):
+		shop.open_for(helper)
+
+func close_shop() -> void:
+	if state != State.SHOP:
+		return
+	ui.hide_screen("shop")
 	change_state(State.PLAYING)
 
 func toggle_pause() -> void:
@@ -163,6 +183,9 @@ func _load_current_stage() -> void:
 	var sanity_node: Node = SanityMgr.new()
 	sanity_node.name = "SanityManager"
 	current_stage.add_child(sanity_node)
+	# Cartographer Mark upgrade: exit direction revealed on entry.
+	if RunManager.active_tags().has("reveal_exit"):
+		current_stage.call_deferred("reveal_exit_direction")
 	change_state(State.PLAYING)
 	RunManager.save_continue()
 	EventBus.stage_loaded.emit(RunManager.stage_index, stage_data["id"])

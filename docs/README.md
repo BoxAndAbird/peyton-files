@@ -65,6 +65,8 @@ profile persists, continue snapshot cleared.
 | Items drop | Loot/secret rooms hold a rarity-colored crate; enemies drop gear ~8% (+Luck); bosses always drop non-common gear |
 | Inventory | Tab opens Pack & Equipment (game pauses). Equip/Unequip/Drop; stats apply instantly; pack caps at 10 (full pack leaves crates in the world) |
 | Item debug | `give random` (luck-boosted roll) or `give item_035`; equip via Tab |
+| Helpers | Green/gold/blue/purple hooded figure in a side room (if the stage rolled a helper room). `E` opens their shop; Merchant sells items, Medic heals (first minor heal free), Cartographer marks the exit, Strange Child trades relics for 25 SANITY |
+| Music layers | Cave drone always; dissonant tension swells as sanity drops; combat pulse when enemies chase; heavier pulse during bosses — all synthesized, no audio files |
 
 ## Debug console (` or F1)
 
@@ -100,8 +102,18 @@ backpack (cap 10) + 5 equip slots in RunManager (persisted in the continue
 snapshot), and the Tab `InventoryScreen` with equip/unequip/drop and stat
 comparison. Stats from equipped gear apply instantly via StatsComponent.
 
+DONE (helpers + music step): all four helper NPCs (`HelperBase`, one seeded
+per stage in the helper room) with the `ShopScreen` — Merchant (3 stage-scaled
+items), Medic (free minor heal + paid heal/sanity), Cartographer (exit
+marking + discounted found item), Strange Child (relic paid in sanity +
+cryptic clue). Upgrade tags wired: Merchant Credit (first item half price),
+Medic Pact (heal after bosses), Cartographer Mark (exit revealed on stage
+entry), No Footprints. `MusicDirector` autoload: synthesized looping
+bed/tension/combat layers crossfaded by stage depth, sanity, combat and boss
+state.
+
 NEXT (in bible build order):
-1. Helper NPCs (Merchant shop first) — request: `HelperBase.gd`
-2. MusicDirector layered ambience/combat stems — request: `MusicDirector.gd`
-3. Sanity event scheduler w/ fake-UI + hallucination actors — request: `SanityEvents.gd`
-4. Species-specific enemy subclasses (Screamer cone, Bone Collector armor…)
+1. Sanity event scheduler w/ fake-UI + hallucination actors — request: `SanityEvents.gd`
+2. Species-specific enemy subclasses (Screamer cone, Bone Collector armor…)
+3. Stage special rules (water slow, mirror decoys, breathing rooms, map lies)
+4. Polish/QA: minimap, lock-on, colorblind palettes, performance pass

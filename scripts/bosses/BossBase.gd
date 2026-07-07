@@ -218,6 +218,10 @@ func die() -> void:
 	ip.setup_item(iid)
 	get_parent().add_child(ip)
 	ip.global_position = global_position + Vector3(0, 0.5, -1.5)
+	# Medic Pact upgrade: heal after each boss.
+	if RunManager.active_tags().has("boss_heal") and pl and pl.has_method("heal"):
+		pl.heal(40.0)
+		EventBus.subtitle_requested.emit("The pact holds. You feel mended.", 2.0)
 	if on_defeated.is_valid():
 		on_defeated.call()
 	collision_layer = 0
