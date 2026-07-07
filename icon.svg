@@ -1,0 +1,8 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" rx="16" fill="#0a0d12"/>
+  <path d="M64 18 L104 104 L24 104 Z" fill="#151b22"/>
+  <circle cx="64" cy="74" r="20" fill="#e8b24a"/>
+  <circle cx="64" cy="74" r="20" fill="none" stroke="#6b4a12" stroke-width="3"/>
+  <path d="M64 60 v28 M50 74 h28" stroke="#0a0d12" stroke-width="4" opacity="0.35"/>
+  <text x="64" y="120" font-family="monospace" font-size="12" fill="#8a94a0" text-anchor="middle">HOLLOW</text>
+</svg>

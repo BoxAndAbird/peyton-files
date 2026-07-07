@@ -1,0 +1,323 @@
+extends Node3D
+## StageBuilder.gd - builds a playable 3D stage from a seed (bible section 7).
+## Phases (in build()): graph -> carve cells -> geometry -> lights/props ->
+## navigation bake -> exit gate -> loot -> enemies -> ready.
+##
+## GEOMETRY STRATEGY (performance budget, bible section 30):
+## Rooms/corridors are carved into a 2m cell grid; carved cells become floor,
+## and carved/uncarved boundaries become walls. Contiguous runs are merged into
+## single boxes so a 14-room stage costs ~100-200 nodes, not thousands.
+## Every room gets a biome-tinted OmniLight (no shadows) + emissive landmark
+## prop + corridor path markers => the "three readability anchors" rule.
+##
+## Integration:
+##   GameManager calls build(stage_data, rng) then get_spawn_point().
+##   The exit gate Interactable calls GameManager.complete_stage().
+##   DebugConsole calls debug_spawn_enemy(id).
+
+const CELL := 2.0          # metres per grid cell
+const MACRO := 9           # grid cells between room centers
+const WALL_H := 3.6
+
+var stage_data: Dictionary = {}
+var graph: RoomGraph
+var carved: Dictionary = {}          # Vector2i -> true
+var room_rects: Dictionary = {}      # room id -> Rect2i (in cells)
+var _rng: RandomNumberGenerator
+var _nav_region: NavigationRegion3D
+var _geometry_root: Node3D
+var _floor_mat: StandardMaterial3D
+var _wall_mat: StandardMaterial3D
+
+# =====================================================================
+#  BUILD PIPELINE
+# =====================================================================
+func build(p_stage_data: Dictionary, rng: RandomNumberGenerator) -> void:
+	stage_data = p_stage_data
+	_rng = rng
+	var count := rng.randi_range(int(stage_data["room_min"]), int(stage_data["room_max"]))
+	graph = RoomGraph.generate(rng, count)
+	_carve_rooms()
+	_carve_corridors()
+	_make_materials()
+	_build_geometry()
+	_build_room_lights_and_props()
+	_build_navigation()
+	_place_exit_gate()
+	_place_pickups()
+	_spawn_enemies()
+	EventBus.say("Stage '%s' built: %d rooms, %d cells." % [stage_data["id"], graph.rooms.size(), carved.size()])
+
+# --- carving ----------------------------------------------------------
+func _carve_rooms() -> void:
+	for r in graph.rooms:
+		var center: Vector2i = r["cell"] * MACRO
+		var hw := _rng.randi_range(2, 3)   # half-width  -> rooms 10-14m wide
+		var hh := _rng.randi_range(2, 3)
+		if r["role"] == "entrance" or r["role"] == "exit":
+			hw = 3; hh = 3                 # key rooms are always roomy
+		room_rects[r["id"]] = Rect2i(center - Vector2i(hw, hh), Vector2i(hw * 2 + 1, hh * 2 + 1))
+		for x in range(center.x - hw, center.x + hw + 1):
+			for y in range(center.y - hh, center.y + hh + 1):
+				carved[Vector2i(x, y)] = true
+
+func _carve_corridors() -> void:
+	var done := {}
+	for r in graph.rooms:
+		for nid in r["links"]:
+			var key := Vector2i(mini(r["id"], nid), maxi(r["id"], nid))
+			if done.has(key):
+				continue
+			done[key] = true
+			var a: Vector2i = r["cell"] * MACRO
+			var b: Vector2i = graph.rooms[nid]["cell"] * MACRO
+			# L-corridor: along x, then along y; 2 cells wide for readability.
+			var p := a
+			while p.x != b.x:
+				p.x += signi(b.x - p.x)
+				carved[p] = true
+				carved[p + Vector2i(0, 1)] = true
+			while p.y != b.y:
+				p.y += signi(b.y - p.y)
+				carved[p] = true
+				carved[p + Vector2i(1, 0)] = true
+
+# --- materials (PS2: flat colors, rough, no PBR shine) -----------------
+func _make_materials() -> void:
+	_floor_mat = StandardMaterial3D.new()
+	_floor_mat.albedo_color = Color(0.28, 0.26, 0.24) * Color(stage_data["light_tint"]).lightened(0.4)
+	_floor_mat.roughness = 1.0
+	_wall_mat = StandardMaterial3D.new()
+	_wall_mat.albedo_color = Color(0.20, 0.19, 0.18) * Color(stage_data["light_tint"]).lightened(0.5)
+	_wall_mat.roughness = 1.0
+
+# --- geometry with run-length merging ----------------------------------
+func _build_geometry() -> void:
+	_geometry_root = Node3D.new()
+	_geometry_root.name = "Geometry"
+	add_child(_geometry_root)
+
+	# FLOORS: merge carved cells into horizontal strips per row.
+	var rows := {}
+	for cell in carved.keys():
+		if not rows.has(cell.y):
+			rows[cell.y] = []
+		rows[cell.y].append(cell.x)
+	for y in rows.keys():
+		var xs: Array = rows[y]
+		xs.sort()
+		var run_start: int = xs[0]
+		var prev: int = xs[0]
+		for i in range(1, xs.size() + 1):
+			var x: int = xs[i] if i < xs.size() else prev + 2   # sentinel breaks run
+			if x != prev + 1:
+				_add_box(Vector3((run_start + prev) * 0.5 * CELL, -0.15, y * CELL),
+					Vector3((prev - run_start + 1) * CELL, 0.3, CELL), _floor_mat)
+				run_start = x
+			prev = x
+
+	# WALLS: boundary faces between carved and uncarved cells, merged in runs.
+	_build_wall_runs(Vector2i(0, -1))  # north
+	_build_wall_runs(Vector2i(0, 1))   # south
+	_build_wall_runs(Vector2i(-1, 0))  # west
+	_build_wall_runs(Vector2i(1, 0))   # east
+
+func _build_wall_runs(dir: Vector2i) -> void:
+	# Collect carved cells whose neighbor in `dir` is uncarved -> wall face.
+	var faces := {}
+	for cell in carved.keys():
+		if not carved.has(cell + dir):
+			# Key by the perpendicular coordinate so runs merge along the wall.
+			var k: int = cell.y if dir.y != 0 else cell.x
+			if not faces.has(k):
+				faces[k] = []
+			faces[k].append(cell.x if dir.y != 0 else cell.y)
+	for k in faces.keys():
+		var arr: Array = faces[k]
+		arr.sort()
+		var run_start: int = arr[0]
+		var prev: int = arr[0]
+		for i in range(1, arr.size() + 1):
+			var v: int = arr[i] if i < arr.size() else prev + 2
+			if v != prev + 1:
+				var length := (prev - run_start + 1) * CELL
+				var mid := (run_start + prev) * 0.5 * CELL
+				var pos: Vector3
+				var size: Vector3
+				if dir.y != 0:
+					pos = Vector3(mid, WALL_H * 0.5, k * CELL + dir.y * CELL * 0.5)
+					size = Vector3(length, WALL_H, 0.4)
+				else:
+					pos = Vector3(k * CELL + dir.x * CELL * 0.5, WALL_H * 0.5, mid)
+					size = Vector3(0.4, WALL_H, length)
+				_add_box(pos, size, _wall_mat)
+				run_start = v
+			prev = v
+
+## One visual box + matching static collision (layer 1: world).
+func _add_box(pos: Vector3, size: Vector3, mat: Material) -> void:
+	var body := StaticBody3D.new()
+	body.collision_layer = 0b1
+	body.collision_mask = 0
+	body.position = pos
+	var col := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = size
+	col.shape = shape
+	body.add_child(col)
+	var mesh := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = size
+	mesh.mesh = bm
+	mesh.material_override = mat
+	body.add_child(mesh)
+	_geometry_root.add_child(body)
+
+# --- lights + readability anchors --------------------------------------
+func _build_room_lights_and_props() -> void:
+	var tint: Color = stage_data["light_tint"]
+	for r in graph.rooms:
+		var center := _room_center(r["id"])
+		# 1) Primary light source (no shadows: performance budget).
+		var light := OmniLight3D.new()
+		light.position = center + Vector3(0, 2.6, 0)
+		light.omni_range = 11.0
+		light.light_energy = 1.1
+		light.light_color = tint
+		light.shadow_enabled = false
+		add_child(light)
+		# 2) Landmark prop: emissive crystal/brazier (also role-coded color).
+		var prop := MeshInstance3D.new()
+		var pm := PrismMesh.new()
+		pm.size = Vector3(0.8, 1.4, 0.8)
+		prop.mesh = pm
+		var mat := StandardMaterial3D.new()
+		var role_col := _role_color(r["role"], tint)
+		mat.albedo_color = role_col
+		mat.emission_enabled = true
+		mat.emission = role_col
+		mat.emission_energy_multiplier = 1.2
+		prop.material_override = mat
+		var off := Vector3(_rng.randf_range(-3, 3), 0.7, _rng.randf_range(-3, 3))
+		prop.position = center + off
+		add_child(prop)
+	# 3) Path markers: small glow dots along corridors every ~6 cells.
+	var i := 0
+	for cell in carved.keys():
+		i += 1
+		if i % 11 != 0:
+			continue
+		var marker := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 0.12
+		sm.height = 0.24
+		marker.mesh = sm
+		var mm := StandardMaterial3D.new()
+		mm.emission_enabled = true
+		mm.emission = Color(stage_data["light_tint"]).lightened(0.3)
+		mm.emission_energy_multiplier = 2.0
+		marker.material_override = mm
+		marker.position = Vector3(cell.x * CELL + 0.7, 0.12, cell.y * CELL + 0.7)
+		add_child(marker)
+
+func _role_color(role: String, tint: Color) -> Color:
+	match role:
+		"exit": return Color(0.95, 0.55, 0.2)
+		"loot": return Color(0.9, 0.8, 0.3)
+		"helper": return Color(0.4, 0.9, 0.6)
+		"event": return Color(0.7, 0.4, 0.8)
+		"secret": return Color(0.3, 0.5, 0.9)
+		_: return tint
+
+# --- navigation ---------------------------------------------------------
+func _build_navigation() -> void:
+	_nav_region = NavigationRegion3D.new()
+	_nav_region.name = "NavRegion"
+	add_child(_nav_region)
+	var nav := NavigationMesh.new()
+	nav.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_STATIC_COLLIDERS
+	nav.geometry_collision_mask = 0b1
+	# The geometry lives under _geometry_root (a sibling), so parse by GROUP,
+	# not by nav-region children. _geometry_root joins "nav_source" below.
+	nav.geometry_source_geometry_mode = NavigationMesh.SOURCE_GEOMETRY_GROUPS_WITH_CHILDREN
+	nav.geometry_source_group_name = "nav_source"
+	nav.agent_radius = 0.5
+	nav.agent_height = 1.8
+	nav.cell_size = 0.25
+	nav.cell_height = 0.25
+	_nav_region.navigation_mesh = nav
+	_geometry_root.add_to_group("nav_source")
+	# Runtime bake; deferred so all geometry is inside the tree first.
+	_nav_region.call_deferred("bake_navigation_mesh")
+
+# --- gameplay content ----------------------------------------------------
+func _room_center(id: int) -> Vector3:
+	var rect: Rect2i = room_rects[id]
+	var c := rect.get_center()
+	return Vector3(c.x * CELL, 0.0, c.y * CELL)
+
+func get_spawn_point() -> Vector3:
+	return _room_center(graph.get_entrance()["id"])
+
+func _place_exit_gate() -> void:
+	var Interactable := load("res://scripts/items/Interactable.gd")
+	var gate = Interactable.new()   # untyped: setup/on_interact are script members
+	gate.setup("Open the descent gate", Color(0.95, 0.5, 0.15), Vector3(1.6, 2.6, 0.5))
+	gate.position = _room_center(graph.get_exit()["id"])
+	gate.on_interact = func(_player):
+		EventBus.say("Exit gate opened.")
+		GameManager.complete_stage()
+	add_child(gate)
+
+func _place_pickups() -> void:
+	var Pickup := load("res://scripts/items/Pickup.gd")
+	# Entrance: guaranteed heal (bible: guaranteed lantern refill / no enemies).
+	var heal = Pickup.new()
+	heal.setup("heal", 30.0)
+	heal.position = get_spawn_point() + Vector3(2.0, 0.5, 1.0)
+	add_child(heal)
+	# Loot + secret rooms: essence clusters.
+	for r in graph.rooms:
+		if r["role"] == "loot" or r["role"] == "secret":
+			for i in range(_rng.randi_range(2, 4)):
+				var p = Pickup.new()
+				p.setup("essence", float(_rng.randi_range(3, 8)))
+				var rect: Rect2i = room_rects[r["id"]]
+				p.position = _room_center(r["id"]) + Vector3(
+					_rng.randf_range(-rect.size.x * 0.3, rect.size.x * 0.3) * CELL * 0.4, 0.5,
+					_rng.randf_range(-rect.size.y * 0.3, rect.size.y * 0.3) * CELL * 0.4)
+				add_child(p)
+
+# --- enemies (threat budget per combat room; bible section 7) ------------
+func _spawn_enemies() -> void:
+	var pool: Array = stage_data["enemy_pool"]
+	var threat_scale: float = stage_data["threat"]
+	for r in graph.rooms:
+		if r["role"] != "combat" and r["role"] != "event":
+			continue
+		var budget := threat_scale * _rng.randf_range(2.0, 4.0)
+		var guard := 0
+		while budget > 0.0 and guard < 8:
+			guard += 1
+			var eid: String = pool[_rng.randi_range(0, pool.size() - 1)]
+			var cost: float = float(Database.get_enemy(eid)["threat"])
+			if cost > budget and guard > 1:
+				break
+			budget -= cost
+			_spawn_enemy_at(eid, _room_center(r["id"]) + Vector3(
+				_rng.randf_range(-3.0, 3.0), 0.2, _rng.randf_range(-3.0, 3.0)))
+
+func _spawn_enemy_at(eid: String, pos: Vector3) -> void:
+	var EnemyBase := load("res://scripts/enemies/EnemyBase.gd")
+	var e = EnemyBase.new()   # untyped: setup() is a script member
+	add_child(e)
+	e.global_position = pos + Vector3.UP * 0.5
+	e.setup(eid, RunManager.stage_index)
+	EventBus.enemy_spawned.emit(e)
+
+## DebugConsole hook: spawn an enemy near the player.
+func debug_spawn_enemy(eid: String) -> void:
+	var pos := get_spawn_point()
+	if GameManager.player:
+		pos = GameManager.player.global_position + Vector3(2.5, 0.2, 2.5)
+	_spawn_enemy_at(eid, pos)
