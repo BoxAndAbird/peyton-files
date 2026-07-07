@@ -112,8 +112,31 @@ entry), No Footprints. `MusicDirector` autoload: synthesized looping
 bed/tension/combat layers crossfaded by stage depth, sanity, combat and boss
 state.
 
-NEXT (in bible build order):
-1. Sanity event scheduler w/ fake-UI + hallucination actors — request: `SanityEvents.gd`
-2. Species-specific enemy subclasses (Screamer cone, Bone Collector armor…)
-3. Stage special rules (water slow, mirror decoys, breathing rooms, map lies)
-4. Polish/QA: minimap, lock-on, colorblind palettes, performance pass
+DONE (document-compliance step, per Appendices B/E/F/G2/J):
+- **10 dedicated species scripts** (`scripts/enemies/species/`, Appendix E) on
+  the shared EnemyBase: Crawler pack-aggression leaps; Blind Stalker hunts the
+  LAST HEARD sound (stand still to vanish); Crystal Spider shard-spit + slowing
+  webs; Mimic bites twice then flees and re-disguises; Tunnel Screamer
+  interruptible scream cone (white-out + crawler summons); Bone Collector
+  armor-stacks off nearby deaths, stripped by burn; Watcher statue-freeze /
+  unseen rush / vanish after 3 hits; Shadow Parasite attach-drain scraped off
+  by dodging, dies to burn; Hollow Monk blink + interruptible curse bolts +
+  sigil summons; Faceless Echo mirrors YOUR class (color, cadence, sidesteps,
+  archer echoes shoot back).
+- **Active-enemy cap** (Appendix J): per-stage caps [4,5,6,8,10]; distant
+  enemies sleep, nearest wake first — no runaway spawns.
+- **Full ending matrix** (Appendix G2): Escape / Hollow / Mercy (aid
+  Medic+Child 3x, kill no echoes) / Truth (all 5 memory relics — one hidden
+  per stage) / Cycle (die on the final stage → your skeleton greets the next
+  run). Ending unlocks recorded in the profile.
+- **8-category sanity event library** (Appendix B): atmosphere, memory
+  scenes, fake UI, false exits/loot that dissolve when approached (navigation
+  + item deception), hallucination enemies (translucent, harmless, one-hit),
+  audio phantoms, NPC distortion. Lantern focus blocks new events (universal
+  counterplay). `sanityevent <category>` forces any of them.
+- **Boss debug per Appendix F**: `boss_phase <n>`, `boss_invuln`, `boss_log`
+  (attack pattern logging). Statistics now persist at run end.
+
+NEXT (remaining polish, beyond the doc's core spec):
+1. Stage special rules (water slow zones, mirror decoys, breathing rooms, map lies)
+2. Minimap, lock-on, colorblind palettes, performance pass

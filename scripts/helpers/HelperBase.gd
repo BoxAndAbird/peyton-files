@@ -47,6 +47,7 @@ func setup(p_helper_id: String, rng: RandomNumberGenerator) -> void:
 	collision_layer = 0b100000   # interactable layer
 	collision_mask = 0
 	add_to_group("interactables")
+	add_to_group("helpers")      # sanity NPC-distortion events check this
 
 	var col := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
@@ -216,6 +217,9 @@ func purchase(index: int) -> bool:
 			EventBus.subtitle_requested.emit(_cryptic_clue(), 4.0)
 	offer["sold"] = true
 	AudioManager.play("pickup")
+	# Ending matrix (Appendix G2): Mercy tracks aiding the Medic and Child.
+	if helper_id == "medic" or helper_id == "child":
+		RunManager.helpers_aided += 1
 	return true
 
 func _sanity_manager():

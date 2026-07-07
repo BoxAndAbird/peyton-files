@@ -35,6 +35,39 @@ var _fight_started := false
 var _boss = null                     # BossBase subclass (untyped: duck calls)
 var _gauntlet_ids: Array = []        # instance ids of gauntlet elites
 
+# --- enemy activation (Appendix J: active enemy caps per stage) --------
+# Enemies beyond the cap or the radius go dormant (no physics/hearing);
+# nearest enemies wake first. Prevents "runaway enemy spawns" (QA list).
+const ACTIVE_CAPS := [4, 5, 6, 8, 10]
+const ACTIVE_RADIUS := 38.0
+var _activation_timer := 0.0
+
+func _process(delta: float) -> void:
+	_activation_timer -= delta
+	if _activation_timer <= 0.0:
+		_activation_timer = 0.5
+		_update_enemy_activation()
+
+func _update_enemy_activation() -> void:
+	var pl = GameManager.player
+	if pl == null:
+		return
+	var cap: int = ACTIVE_CAPS[clampi(RunManager.stage_index, 0, ACTIVE_CAPS.size() - 1)]
+	var ranked: Array = []
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		var e3 := enemy as Node3D
+		# Only dormancy-capable enemies participate (bosses have no set_dormant
+		# and must never sleep).
+		if e3 and e3.has_method("set_dormant"):
+			ranked.append([e3.global_position.distance_to(pl.global_position), e3])
+	ranked.sort_custom(func(a, b): return a[0] < b[0])
+	var active := 0
+	for entry in ranked:
+		var wake: bool = active < cap and entry[0] <= ACTIVE_RADIUS
+		entry[1].call("set_dormant", not wake)
+		if wake:
+			active += 1
+
 # =====================================================================
 #  BUILD PIPELINE
 # =====================================================================
@@ -334,13 +367,12 @@ func start_climax() -> void:
 func _start_gauntlet(center: Vector3) -> void:
 	EventBus.subtitle_requested.emit("Elites guard the descent.", 3.0)
 	EventBus.combat_state_changed.emit(true)
-	var EnemyBase := load("res://scripts/enemies/EnemyBase.gd")
 	var pool: Array = stage_data["enemy_pool"]
 	if not EventBus.enemy_died.is_connected(_on_gauntlet_death):
 		EventBus.enemy_died.connect(_on_gauntlet_death)
 	for i in range(4):
 		var eid: String = pool[_rng.randi_range(0, pool.size() - 1)]
-		var e = EnemyBase.new()
+		var e = EnemyFactory.create(eid)
 		add_child(e)
 		e.global_position = center + Vector3(_rng.randf_range(-4, 4), 0.5, _rng.randf_range(-4, 4))
 		# Elites: +1 stage of scaling and a bigger silhouette.
@@ -398,6 +430,29 @@ func _place_pickups() -> void:
 			ip.setup_item(Database.roll_item_id(_rng, 0.0))
 			ip.position = _room_center(r["id"]) + Vector3(0, 0.4, 1.2)
 			add_child(ip)
+	# One memory relic per stage (Appendix G2: Truth needs all five). Hidden
+	# in the first event room; falls back to a traversal room if none rolled.
+	var relic_room := -1
+	for r in graph.rooms:
+		if r["role"] == "event":
+			relic_room = r["id"]
+			break
+	if relic_room == -1:
+		for r in graph.rooms:
+			if r["role"] == "traversal":
+				relic_room = r["id"]
+				break
+	if relic_room != -1:
+		var relic = Pickup.new()
+		relic.setup("relic", 1.0)
+		relic.position = _room_center(relic_room) + Vector3(-1.5, 0.4, -1.5)
+		add_child(relic)
+	# Cycle ending callback: the skeleton of your last failed descent waits
+	# in the entrance (bible: "skeleton of player appears in next run").
+	if SaveManager.profile.get("cycle_pending", false) and RunManager.stage_index == 0:
+		SaveManager.profile["cycle_pending"] = false
+		SaveManager.save_profile()
+		_place_cycle_skeleton()
 
 # --- enemies (threat budget per combat room; bible section 7) ------------
 func _spawn_enemies() -> void:
@@ -419,12 +474,30 @@ func _spawn_enemies() -> void:
 				_rng.randf_range(-3.0, 3.0), 0.2, _rng.randf_range(-3.0, 3.0)))
 
 func _spawn_enemy_at(eid: String, pos: Vector3) -> void:
-	var EnemyBase := load("res://scripts/enemies/EnemyBase.gd")
-	var e = EnemyBase.new()   # untyped: setup() is a script member
+	var e = EnemyFactory.create(eid)   # dedicated species script (Appendix E)
 	add_child(e)
 	e.global_position = pos + Vector3.UP * 0.5
 	e.setup(eid, RunManager.stage_index)
 	EventBus.enemy_spawned.emit(e)
+
+## The bones of the player's previous failed run (Cycle ending callback).
+func _place_cycle_skeleton() -> void:
+	var bones := Node3D.new()
+	add_child(bones)
+	bones.position = get_spawn_point() + Vector3(-2.2, 0, -1.5)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.9, 0.88, 0.8)
+	mat.roughness = 1.0
+	for i in range(5):
+		var b := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(randf_range(0.15, 0.5), 0.12, randf_range(0.1, 0.3))
+		b.mesh = box
+		b.position = Vector3(randf_range(-0.5, 0.5), 0.08, randf_range(-0.5, 0.5))
+		b.rotation.y = randf() * TAU
+		b.material_override = mat
+		bones.add_child(b)
+	EventBus.subtitle_requested.emit("These bones lie the way you fell. They are wearing your boots.", 4.0)
 
 ## One seeded helper NPC in the "helper" room (bible section 14). Rooms may
 ## roll zero helper rooms — then the stage simply has no helper.

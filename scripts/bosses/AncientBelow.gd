@@ -129,40 +129,49 @@ func _on_phase(new_phase: int) -> void:
 		5: _open_choice()
 
 # =====================================================================
-#  PHASE 5: THE CHOICE (bible: ending depends on the final decision)
+#  PHASE 5: THE CHOICE (Appendix G2 Ending Matrix)
+#  Escape - always offered (leave the cave)
+#  Hollow - always offered (accept the cave)
+#  Mercy  - only if the Medic/Child were aided 3+ times AND no echoes killed
+#  Truth  - only if all five memory relics were collected
+#  Killing the heart outright: Escape with sanity > 40, otherwise Hollow.
 # =====================================================================
 func _open_choice() -> void:
 	_choice_active = true
 	stop_moving()
 	_mat.emission_energy_multiplier = 2.5
 	EventBus.subtitle_requested.emit("The heart opens. It offers you a place inside.", 4.0)
+
+	var altars: Array = [
+		["Leave the Cave", "escape", Color(0.95, 0.75, 0.35)],
+		["Become the Hollow", "hollow", Color(0.5, 0.4, 0.8)],
+	]
+	if RunManager.helpers_aided >= 3 and RunManager.echoes_killed == 0:
+		altars.append(["Free the Trapped Memory", "mercy", Color(0.4, 0.9, 0.6)])
+		EventBus.subtitle_requested.emit("A third light kindles: the ones you helped remember you.", 4.0)
+	if RunManager.memory_relics >= 5:
+		altars.append(["Speak the Cave's Name", "truth", Color(0.9, 0.9, 1.0)])
+		EventBus.subtitle_requested.emit("The five memories align. You could know what this place IS.", 4.0)
+
 	var Interactable := load("res://scripts/items/Interactable.gd")
-
-	var strike = Interactable.new()
-	strike.setup("Strike the Heart", Color(0.95, 0.4, 0.3), Vector3(0.8, 1.6, 0.8))
-	strike.position = Vector3(-3.0, 0, 3.0)
-	strike.on_interact = func(_pl):
-		RunManager.ending_id = "shatter"
-		_resolve_choice()
-	add_child(strike)
-
-	var join = Interactable.new()
-	join.setup("Become the Hollow", Color(0.5, 0.4, 0.8), Vector3(0.8, 1.6, 0.8))
-	join.position = Vector3(3.0, 0, 3.0)
-	join.on_interact = func(_pl):
-		RunManager.ending_id = "hollow"
-		_resolve_choice()
-	add_child(join)
+	for i in range(altars.size()):
+		var entry: Array = altars[i]
+		var altar = Interactable.new()
+		altar.setup(String(entry[0]), entry[2], Vector3(0.8, 1.6, 0.8))
+		var ang := TAU * i / altars.size()
+		altar.position = Vector3(cos(ang) * 4.0, 0, 3.0 + sin(ang) * 2.0)
+		var ending: String = entry[1]
+		altar.on_interact = func(_pl):
+			RunManager.ending_id = ending
+			_resolve_choice()
+		add_child(altar)
 
 func _resolve_choice() -> void:
 	_choice_active = false
 	die()
 
-func take_damage(amount: float, source: Node = null) -> void:
-	# During the choice the heart can still be executed by force = shatter.
-	super.take_damage(amount, source)
-
 func die() -> void:
+	# Killed by force (or choice already made): resolve per the matrix.
 	if RunManager.ending_id == "":
-		RunManager.ending_id = "shatter"
+		RunManager.ending_id = "escape" if RunManager.carry_sanity > 40.0 else "hollow"
 	super.die()

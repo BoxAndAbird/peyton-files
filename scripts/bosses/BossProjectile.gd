@@ -9,13 +9,15 @@ const MAX_RANGE := 34.0
 var _dir := Vector3.FORWARD
 var _speed := 12.0
 var _dmg := 15.0
+var _sanity_drain := 0.0   # curse bolts (Hollow Monk) also erode the mind
 var _travelled := 0.0
 var _dead := false
 
-func setup(dir: Vector3, speed: float, dmg: float, color: Color) -> void:
+func setup(dir: Vector3, speed: float, dmg: float, color: Color, sanity_drain := 0.0) -> void:
 	_dir = dir.normalized()
 	_speed = speed
 	_dmg = dmg
+	_sanity_drain = sanity_drain
 	var mesh := MeshInstance3D.new()
 	var s := SphereMesh.new()
 	s.radius = 0.22
@@ -52,6 +54,10 @@ func _physics_process(delta: float) -> void:
 			var pl = GameManager.player
 			if pl and pl.cam:
 				pl.cam.add_trauma(0.3)
+			if _sanity_drain > 0.0 and GameManager.current_stage:
+				var sm = GameManager.current_stage.get_node_or_null("SanityManager")
+				if sm:
+					sm.set_sanity(sm.sanity - _sanity_drain)
 		_expire()
 		return
 	global_position = to

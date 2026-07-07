@@ -32,7 +32,12 @@ const SLOT_ORDER := ["weapon", "armor", "relic", "accessory", "consumable"]
 var carry_health := -1.0              # -1 => full at next spawn
 var carry_sanity := 100.0
 var run_time := 0.0                   # seconds elapsed, for victory stats
-var ending_id := ""                   # set by the final boss choice ("shatter"/"hollow")
+
+# --- Ending matrix tracking (Appendix G2) -----------------------------
+var ending_id := ""                   # escape / hollow / mercy / truth (set at final boss)
+var helpers_aided := 0                # Medic/Child services used (Mercy needs >= 3)
+var echoes_killed := 0                # Faceless kills (Mercy needs 0)
+var memory_relics := 0                # collected memory relics (Truth needs 5)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -55,6 +60,9 @@ func start_new(new_class_id: String, new_seed := 0) -> void:
 	carry_sanity = 100.0
 	run_time = 0.0
 	ending_id = ""
+	helpers_aided = 0
+	echoes_killed = 0
+	memory_relics = 0
 	run_active = true
 	SaveManager.record_run_started()
 	EventBus.run_started.emit(class_id, seed_value)
@@ -68,9 +76,12 @@ func end_run(victory: bool) -> void:
 	}
 	if victory:
 		SaveManager.record_victory(run_time)
+		if ending_id != "":
+			SaveManager.unlock("ending_" + ending_id)   # matrix unlock column
 	else:
 		SaveManager.record_death()
-	SaveManager.clear_run()  # continue is invalidated on death/victory
+	SaveManager.save_stats()   # persist balancing analytics (bible section 23)
+	SaveManager.clear_run()    # continue is invalidated on death/victory
 	EventBus.run_ended.emit(victory, summary)
 
 # --- Stage flow ------------------------------------------------------
@@ -194,6 +205,8 @@ func to_snapshot() -> Dictionary:
 		"backpack": backpack.duplicate(),
 		"essence": essence, "carry_health": carry_health,
 		"carry_sanity": carry_sanity, "run_time": run_time,
+		"helpers_aided": helpers_aided, "echoes_killed": echoes_killed,
+		"memory_relics": memory_relics,
 	}
 
 func from_snapshot(s: Dictionary) -> void:
@@ -208,6 +221,9 @@ func from_snapshot(s: Dictionary) -> void:
 	carry_health = float(s.get("carry_health", -1.0))
 	carry_sanity = float(s.get("carry_sanity", 100.0))
 	run_time = float(s.get("run_time", 0.0))
+	helpers_aided = int(s.get("helpers_aided", 0))
+	echoes_killed = int(s.get("echoes_killed", 0))
+	memory_relics = int(s.get("memory_relics", 0))
 	run_active = true
 
 func save_continue() -> void:

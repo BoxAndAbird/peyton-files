@@ -36,6 +36,8 @@ var godmode := false
 
 var _dodge_timer := -1.0        # >= 0 while dodging
 var _dodge_dir := Vector3.ZERO
+var _slow_mult := 1.0           # movement debuff (spider webs, water)
+var _slow_timer := 0.0
 var _still_time := 0.0          # tank passive accumulator
 var _guarded := false
 var _footstep_accum := 0.0
@@ -164,6 +166,12 @@ func _physics_process(delta: float) -> void:
 		wish = wish.normalized()
 
 	var speed := stats.move_speed(BASE_MOVE_SPEED)
+	# Movement debuffs (spider webs, flooded water) decay over time.
+	if _slow_timer > 0.0:
+		_slow_timer -= delta
+		speed *= _slow_mult
+		if _slow_timer <= 0.0:
+			_slow_mult = 1.0
 	var sprinting := Input.is_action_pressed("sprint") and stamina > 1.0 and wish.length_squared() > 0.01
 	if sprinting:
 		var cost := SPRINT_COST_PER_S * delta
@@ -282,6 +290,11 @@ func take_damage(amount: float, source: Node = null) -> void:
 func heal(amount: float) -> void:
 	health = minf(health + amount, stats.max_health())
 	_emit_bars()
+
+## Movement debuff (spider webs, water). mult 0..1, duration seconds.
+func apply_slow(mult: float, duration: float) -> void:
+	_slow_mult = minf(_slow_mult, clampf(mult, 0.2, 1.0))
+	_slow_timer = maxf(_slow_timer, duration)
 
 func get_health() -> float:
 	return health

@@ -36,6 +36,10 @@ var staggered := false
 var exposed := false                 # counterplay window: 2x damage taken
 var on_defeated: Callable = Callable()
 
+# Appendix F debug hooks: `boss_invuln`, `boss_log`, `boss_phase <n>`.
+var invulnerable := false
+var log_attacks := false
+
 var _stagger_timer := 0.0
 var _burn_time := 0.0
 var _burn_tick := 0.0
@@ -146,7 +150,7 @@ func _on_damaged(_amount: float) -> void:
 #  DAMAGE INTAKE (duck-typed contract shared with EnemyBase)
 # =====================================================================
 func take_damage(amount: float, _source: Node = null) -> void:
-	if hp <= 0.0 or not _damageable():
+	if hp <= 0.0 or invulnerable or not _damageable():
 		return
 	if not fighting:
 		activate()                    # no free sniping on a dormant boss
@@ -231,6 +235,28 @@ func die() -> void:
 	tw.tween_callback(queue_free)
 
 # =====================================================================
+#  DEBUG (Appendix F: boss_phase / invuln / pattern logging)
+# =====================================================================
+## Jump directly to a phase: applies every _on_phase side effect in order
+## and sets HP just under that phase's threshold.
+func debug_set_phase(target: int) -> void:
+	target = clampi(target, 1, phase_thresholds.size())
+	if not fighting:
+		activate()
+	while phase < target:
+		phase += 1
+		EventBus.boss_phase_changed.emit(boss_id, phase)
+		_on_phase(phase)
+	var frac: float = float(phase_thresholds[target - 1]) if target - 1 < phase_thresholds.size() else 0.1
+	hp = maxf(max_hp * frac - 1.0, 1.0)
+	EventBus.boss_health_changed.emit(hp, max_hp)
+
+## Attack pattern logging (console `boss_log` toggles).
+func _log(text: String) -> void:
+	if log_attacks:
+		EventBus.say("[%s p%d] %s" % [boss_id, phase, text])
+
+# =====================================================================
 #  SHARED HELPERS
 # =====================================================================
 func player():
@@ -286,6 +312,7 @@ func hurt_player(amount: float, trauma := 0.35) -> void:
 # --- attack primitives ------------------------------------------------
 ## Telegraphed projectile aimed at `target` (usually player_pos()).
 func _shoot_at(from: Vector3, target: Vector3, speed: float, dmg: float, color := Color(0.4, 0.7, 1.0)) -> void:
+	_log("shoot_at dmg=%.0f" % dmg)
 	var BossProjectile := load("res://scripts/bosses/BossProjectile.gd")
 	var p = BossProjectile.new()
 	get_parent().add_child(p)
@@ -295,6 +322,7 @@ func _shoot_at(from: Vector3, target: Vector3, speed: float, dmg: float, color :
 ## Telegraphed ground ring: red disc for `delay`, then damages the player if
 ## still inside `radius` of `center`.
 func _ring_attack(center: Vector3, radius: float, delay: float, dmg: float) -> void:
+	_log("ring r=%.1f dmg=%.0f" % [radius, dmg])
 	var disc := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
 	cyl.top_radius = radius
@@ -321,6 +349,7 @@ func _ring_attack(center: Vector3, radius: float, delay: float, dmg: float) -> v
 
 ## Falling rock with a ground warning marker.
 func _fall_rock(ground_pos: Vector3, dmg: float) -> void:
+	_log("fall_rock dmg=%.0f" % dmg)
 	var FallingRock := load("res://scripts/bosses/FallingRock.gd")
 	var r = FallingRock.new()
 	get_parent().add_child(r)
@@ -328,6 +357,7 @@ func _fall_rock(ground_pos: Vector3, dmg: float) -> void:
 
 ## Lingering damage zone (flood water, acid, void).
 func _hazard(center: Vector3, size: Vector3, dps: float, life: float, color := Color(0.25, 0.5, 0.7, 0.5)) -> void:
+	_log("hazard dps=%.0f life=%.0fs" % [dps, life])
 	var HazardZone := load("res://scripts/bosses/HazardZone.gd")
 	var h = HazardZone.new()
 	get_parent().add_child(h)
@@ -336,9 +366,9 @@ func _hazard(center: Vector3, size: Vector3, dps: float, life: float, color := C
 
 ## Spawn regular enemies as adds around the boss.
 func _summon(species: String, count: int) -> void:
-	var EnemyBase := load("res://scripts/enemies/EnemyBase.gd")
+	_log("summon %s x%d" % [species, count])
 	for i in range(count):
-		var e = EnemyBase.new()
+		var e = EnemyFactory.create(species)
 		get_parent().add_child(e)
 		e.global_position = global_position + Vector3(randf_range(-3, 3), 0.5, randf_range(-3, 3))
 		e.setup(species, RunManager.stage_index)

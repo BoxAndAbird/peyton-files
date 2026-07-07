@@ -32,16 +32,24 @@ func _ready() -> void:
 func _on_run_ended(victory: bool, summary: Dictionary) -> void:
 	if not victory:
 		return
-	# Ending text depends on the final-boss choice (bible: Choice Ending).
+	# Ending matrix (Appendix G2): tone + unlock per ending.
 	match String(summary.get("ending", "")):
-		"shatter":
-			_headline.text = "THE HEART LIES SHATTERED"
+		"escape", "shatter":
+			_headline.text = "YOU SAW THE SKY AGAIN"
 			_headline.add_theme_color_override("font_color", UIKit.ACCENT)
-			_flavor.text = "The cave is quiet. You climb toward a light that, this time, does not move away."
+			_flavor.text = "Ambiguous survival. The cave is quiet behind you — or holding its breath.\nUnlocked: New Difficulty."
 		"hollow":
 			_headline.text = "THE HOLLOW WEARS YOUR NAME"
 			_headline.add_theme_color_override("font_color", UIKit.SANITY)
-			_flavor.text = "You are vast now. Somewhere far above, someone new picks up a lantern."
+			_flavor.text = "Dark transformation. You are vast now; someone new picks up a lantern above.\nUnlocked: Cursed Relic Set."
+		"mercy":
+			_headline.text = "THE TRAPPED MEMORY GOES FREE"
+			_headline.add_theme_color_override("font_color", Color(0.4, 0.9, 0.6))
+			_flavor.text = "Bittersweet. The ones you helped walk out beside you, real for exactly one sunrise.\nUnlocked: Helper Lore Gallery."
+		"truth":
+			_headline.text = "YOU KNOW WHAT SLEEPS BELOW"
+			_headline.add_theme_color_override("font_color", Color(0.9, 0.9, 1.0))
+			_flavor.text = "Revelatory, unsettling. The cave has a name, and now so does the thing that dug it.\nUnlocked: True Final Modifier."
 		_:
 			_headline.text = "YOU SAW THE SKY AGAIN"
 			_flavor.text = "Or something wearing the sky. It is hard to say, now."

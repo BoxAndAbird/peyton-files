@@ -25,6 +25,9 @@ var _boss_bar: ProgressBar
 var _lying := false
 var _real_health := Vector2(100, 100)   # x=cur y=max
 
+# Blind pulse overlay (Tunnel Screamer): a white flash, never darkness.
+var _blind_rect: ColorRect
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -98,6 +101,13 @@ func _ready() -> void:
 	_boss_bar = UIKit.bar(UIKit.DANGER, 520)
 	_boss_box.add_child(_boss_bar)
 
+	# --- blind pulse overlay ----------------------------------------------
+	_blind_rect = ColorRect.new()
+	_blind_rect.color = Color(1, 1, 1, 0)
+	_blind_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_blind_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_blind_rect)
+
 	# --- signals ---------------------------------------------------------
 	EventBus.player_health_changed.connect(_on_health)
 	EventBus.player_stamina_changed.connect(_on_stamina)
@@ -161,6 +171,12 @@ func _on_boss_health(cur: float, mx: float) -> void:
 
 func _on_boss_defeated(_boss_id: String) -> void:
 	_boss_box.visible = false
+
+## Screamer blind pulse: white flash that fades over `duration` seconds.
+func flash_blind(duration: float) -> void:
+	_blind_rect.color = Color(1, 1, 1, 0.85)
+	var tw := create_tween()
+	tw.tween_property(_blind_rect, "color:a", 0.0, duration)
 
 # --- fake_ui sanity event: the health bar lies for ~1.2s (visual only) ----
 func _on_sanity_event(event_id: String) -> void:

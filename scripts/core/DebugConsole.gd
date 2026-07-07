@@ -106,6 +106,7 @@ func _run(cmd: String, args: PackedStringArray) -> void:
 		"help":
 			_println("Commands: help, fps, seed <n>, class <id>, startrun <class> [seed], "
 				+ "stage <n>, regen, complete, spawn <enemy> [count], boss <id|start>, "
+				+ "boss_phase <n>, boss_invuln, boss_log, sanityevent <category>, "
 				+ "kill_all, heal [amt], god, sanity <0-100>, upgrade, give <item_id>, "
 				+ "essence <n>, list <classes|enemies|stages|upgrades>, menu, quit")
 		"fps":
@@ -147,6 +148,39 @@ func _run(cmd: String, args: PackedStringArray) -> void:
 				_println("boss spawned: " + args[0])
 			else:
 				_println("unknown boss: " + args[0])
+		"boss_phase":
+			var b = _live_boss()
+			if b == null:
+				_println("no active boss (use 'boss <id>' or 'boss start' first)")
+			elif args.size() == 0:
+				_println("usage: boss_phase <n>")
+			else:
+				b.debug_set_phase(int(args[0]))
+				_println("boss -> phase %d (hp %.0f/%.0f)" % [b.phase, b.hp, b.max_hp])
+		"boss_invuln":
+			var b = _live_boss()
+			if b == null:
+				_println("no active boss")
+			else:
+				b.invulnerable = not b.invulnerable
+				_println("boss invulnerable = %s" % str(b.invulnerable))
+		"boss_log":
+			var b = _live_boss()
+			if b == null:
+				_println("no active boss")
+			else:
+				b.log_attacks = not b.log_attacks
+				_println("boss attack logging = %s" % str(b.log_attacks))
+		"sanityevent":
+			var sm = GameManager.current_stage.get_node_or_null("SanityManager") if GameManager.current_stage else null
+			if sm == null:
+				_println("no active stage / sanity manager")
+			elif args.size() == 0:
+				_println("categories: atmosphere, memory_scene, fake_ui, navigation, "
+					+ "combat_halluc, audio, npc_distortion, item_deception")
+			else:
+				sm.debug_fire(args[0])
+				_println("fired sanity event: " + args[0])
 		"kill_all":
 			var k := 0
 			for e in get_tree().get_nodes_in_group("enemies"):
@@ -199,6 +233,18 @@ func _run(cmd: String, args: PackedStringArray) -> void:
 			get_tree().quit()
 		_:
 			_println("[color=#e88]unknown command:[/color] " + cmd)
+
+## Find a living boss: the stage's arena boss, or any BossBase in "enemies".
+func _live_boss():
+	if GameManager.current_stage == null:
+		return null
+	var b = GameManager.current_stage._boss
+	if b != null and is_instance_valid(b) and b.hp > 0.0:
+		return b
+	for e in get_tree().get_nodes_in_group("enemies"):
+		if e.has_method("debug_set_phase"):
+			return e
+	return null
 
 func _cmd_spawn(args: PackedStringArray) -> void:
 	if args.size() == 0:

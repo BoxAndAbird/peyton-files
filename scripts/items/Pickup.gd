@@ -28,11 +28,13 @@ func setup(p_kind: String, p_value: float) -> void:
 
 	var mesh := MeshInstance3D.new()
 	var pm := PrismMesh.new()
-	pm.size = Vector3(0.3, 0.45, 0.3)
+	pm.size = Vector3(0.3, 0.45, 0.3) if kind != "relic" else Vector3(0.5, 0.8, 0.5)
 	mesh.mesh = pm
 	mesh.position = Vector3(0, 0.35, 0)
 	var mat := StandardMaterial3D.new()
 	var color := Color(0.95, 0.85, 0.35) if kind == "essence" else Color(0.85, 0.3, 0.3)
+	if kind == "relic":
+		color = Color(0.9, 0.9, 1.0)   # memory relics glow white (Truth ending)
 	mat.albedo_color = color
 	mat.emission_enabled = true
 	mat.emission = color
@@ -98,5 +100,10 @@ func _on_body(body: Node3D) -> void:
 		"heal":
 			if body.has_method("heal"):
 				body.call("heal", value)   # call(): body is typed Node3D
+		"relic":
+			# Memory relic (Appendix G2: collect all five for the Truth ending).
+			RunManager.memory_relics += 1
+			EventBus.subtitle_requested.emit(
+				"A memory, crystallized. (%d/5)" % RunManager.memory_relics, 3.0)
 	EventBus.item_picked_up.emit(kind)
 	queue_free()

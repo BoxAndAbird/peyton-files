@@ -19,9 +19,6 @@ extends CharacterBody3D
 enum AIState { IDLE, PATROL, INVESTIGATE, SEARCH, CHASE, ATTACK, RETREAT, STAGGERED, ENRAGED, DEAD }
 
 const GRAVITY := 18.0
-const ATTACK_RANGE := 1.9
-const ATTACK_WINDUP := 0.45
-const ATTACK_RECOVERY := 1.1
 const POISE_MAX := 40.0
 
 var species_id := "crawler"
@@ -32,6 +29,21 @@ var damage := 10.0
 var move_speed := 3.0
 var detect_radius := 12.0
 var senses := "sight"
+
+# Attack timing (Appendix E: per-species windup/active/recovery tables).
+# Species subclasses override these in _species_setup().
+var attack_range := 1.9
+var attack_windup := 0.45
+var attack_recovery := 1.1
+var retreat_time := 1.5          # RETREAT state duration (fleeing species)
+
+# Hallucination enemies (Appendix B combat-hallucination events): translucent,
+# one-hit, deal no damage, self-fade. Created via make_hallucination().
+var is_hallucination := false
+
+# Dormancy: StageBuilder's activation manager freezes far enemies so the
+# active-enemy cap (Appendix J) holds. Dormant = no physics, no hearing.
+var dormant := false
 
 var state: int = AIState.IDLE
 var staggered := false
@@ -85,7 +97,46 @@ func setup(p_species: String, stage_index: int) -> void:
 		EventBus.player_moved_loud.connect(_on_heard_sound)
 
 	SaveManager.record_encyclopedia(species_id)
+	_species_setup()
 	_enter_state(AIState.IDLE)
+
+## Species hook: subclasses set attack timing, groups, extra senses here.
+func _species_setup() -> void:
+	pass
+
+## Turn this enemy into a sanity hallucination: translucent, fragile,
+## harmless, self-fading (faster with the Clear Mind upgrade).
+func make_hallucination() -> void:
+	is_hallucination = true
+	hp = 1.0
+	if _mat:
+		_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_mat.albedo_color = Color(_mat.albedo_color, 0.45)
+	var life := 5.0 if RunManager.active_tags().has("halluc_fade") else 9.0
+	var t := get_tree().create_timer(life, false)
+	t.timeout.connect(func():
+		if state != AIState.DEAD:
+			fade_out())
+
+## Silent removal (hallucinations, cleanup): no loot, no kill credit.
+func fade_out() -> void:
+	state = AIState.DEAD
+	collision_layer = 0
+	remove_from_group("enemies")
+	if is_in_group("chasing_enemies"):
+		remove_from_group("chasing_enemies")
+	var tw := create_tween()
+	tw.tween_property(self, "scale", Vector3(0.05, 0.05, 0.05), 0.6)
+	tw.tween_callback(queue_free)
+
+## StageBuilder activation manager (Appendix J active-enemy cap).
+func set_dormant(value: bool) -> void:
+	if dormant == value or state == AIState.DEAD:
+		return
+	dormant = value
+	set_physics_process(not dormant)
+	if dormant:
+		velocity = Vector3.ZERO
 
 ## Placeholder body: silhouette-first low-poly (bible section 18). Override
 ## per species for bespoke shapes.
@@ -182,20 +233,24 @@ func _physics_process(delta: float) -> void:
 		AIState.CHASE:
 			if player == null:
 				_enter_state(AIState.IDLE)
-			elif dist <= ATTACK_RANGE and _attack_timer <= 0.0:
+			elif dist <= attack_range and _attack_timer <= 0.0:
 				_enter_state(AIState.ATTACK)
 				_begin_attack(player)
 			else:
-				var speed := move_speed
-				# Watcher: freezes while the player is looking at it.
-				if senses == "sight_los" and _player_sees_me(player):
-					speed = 0.0
-				_move_toward(player.global_position, speed, delta)
+				var speed := _chase_speed(player)
+				_move_toward(_chase_target(player), speed, delta)
 				if dist > detect_radius * 1.8 and senses != "sound":
 					_enter_state(AIState.IDLE)
 		AIState.ATTACK:
 			velocity.x = 0.0
 			velocity.z = 0.0
+		AIState.RETREAT:
+			# Flee directly away from the player, then re-engage.
+			if player:
+				var away := global_position + (global_position - player.global_position)
+				_move_toward(away, move_speed * 1.1, delta)
+			if _state_timer >= retreat_time:
+				_enter_state(AIState.CHASE)
 		AIState.STAGGERED:
 			velocity.x = 0.0
 			velocity.z = 0.0
@@ -216,6 +271,17 @@ func _physics_process(delta: float) -> void:
 func _species_process(_delta: float) -> void:
 	pass
 
+## Species hook: where to move while chasing (Blind Stalker hunts the LAST
+## HEARD position, not the player's true position).
+func _chase_target(player: Node3D) -> Vector3:
+	return player.global_position
+
+## Species hook: chase speed modifier (Watcher freezes while watched).
+func _chase_speed(player) -> float:
+	if senses == "sight_los" and _player_sees_me(player):
+		return 0.0
+	return move_speed
+
 # --- senses -----------------------------------------------------------
 func _try_detect(player: Node3D, dist: float) -> void:
 	if player == null:
@@ -233,7 +299,7 @@ func _try_detect(player: Node3D, dist: float) -> void:
 			pass   # only _on_heard_sound drives this species
 
 func _on_heard_sound(pos: Vector3, loudness: float) -> void:
-	if state == AIState.DEAD:
+	if state == AIState.DEAD or dormant:
 		return
 	var d := global_position.distance_to(pos)
 	if d <= detect_radius * loudness:
@@ -295,22 +361,33 @@ func _move_toward(target: Vector3, speed: float, _delta: float) -> void:
 		velocity.z = 0.0
 
 # --- attacking ------------------------------------------------------------
-func _begin_attack(player: Node3D) -> void:
+func _begin_attack(_player: Node3D) -> void:
 	_flash(Color(1.0, 0.5, 0.3))   # telegraph (bible: clear windups)
 	AudioManager.play_at("dodge", global_position, get_parent(), 0.7)
 	# create_timer(..., false): respect pause so windups never land mid-pause.
-	var windup := get_tree().create_timer(ATTACK_WINDUP, false)
+	var windup := get_tree().create_timer(attack_windup, false)
 	windup.timeout.connect(func():
 		if state == AIState.DEAD or GameManager.player == null:
 			return
-		_mat.albedo_color = data["color"]
-		# Active frame check: still in range and roughly frontal.
-		var d: float = global_position.distance_to(GameManager.player.global_position)
-		if d <= ATTACK_RANGE + 0.5:
-			GameManager.player.take_damage(damage, self)
-		_attack_timer = ATTACK_RECOVERY
-		if state != AIState.DEAD and state != AIState.STAGGERED:
+		if _mat:
+			_mat.albedo_color = data["color"]
+		_perform_attack()
+		_attack_timer = attack_recovery
+		if state != AIState.DEAD and state != AIState.STAGGERED and state != AIState.RETREAT:
 			_enter_state(AIState.CHASE))
+
+## Species hook: the attack's active frames. Default = frontal melee bite.
+## Hallucinations whiff by design (Appendix B: pressure without damage).
+func _perform_attack() -> void:
+	var pl = GameManager.player
+	if pl == null:
+		return
+	var d: float = global_position.distance_to(pl.global_position)
+	if d <= attack_range + 0.5:
+		if is_hallucination:
+			AudioManager.play_at("dodge", global_position, get_parent(), 1.3)
+			return
+		pl.take_damage(damage, self)
 
 # --- damage intake ----------------------------------------------------------
 func take_damage(amount: float, _source: Node = null) -> void:
@@ -356,8 +433,16 @@ func _flash(color: Color) -> void:
 func die() -> void:
 	if state == AIState.DEAD:
 		return
+	if is_hallucination:
+		# Hallucinations dissolve: no loot, no kill credit, no gauntlet count.
+		EventBus.subtitle_requested.emit("It was never there.", 1.5)
+		fade_out()
+		return
 	_enter_state(AIState.DEAD)
 	SaveManager.stat_add_kill(species_id)
+	# Ending matrix (Appendix G2): Mercy requires killing no player echoes.
+	if species_id == "faceless":
+		RunManager.echoes_killed += 1
 	EventBus.enemy_died.emit(self, global_position)
 	AudioManager.play_at("hurt", global_position, get_parent(), 0.5)
 	# Essence drop (bible combat loop: loot essence).

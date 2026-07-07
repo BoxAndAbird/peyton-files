@@ -5,13 +5,15 @@ extends Control
 
 var _summary_lbl: Label
 var _retry_btn: Button
+var _headline: Label
 var _last_summary: Dictionary = {}
 
 func _ready() -> void:
 	add_child(UIKit.background(Color(0.05, 0.02, 0.02, 0.95)))
 	var col := UIKit.center_column(12)
 	add_child(col)
-	col.add_child(UIKit.label("THE CAVE KEEPS YOU", 36, UIKit.DANGER))
+	_headline = UIKit.label("THE CAVE KEEPS YOU", 36, UIKit.DANGER)
+	col.add_child(_headline)
 	_summary_lbl = UIKit.subtitle("")
 	_summary_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(_summary_lbl)
@@ -30,6 +32,15 @@ func _on_run_ended(victory: bool, summary: Dictionary) -> void:
 	if victory:
 		return
 	_last_summary = summary
+	# Cycle ending (Appendix G2): dying on the final stage restarts the loop —
+	# next run's entrance holds your skeleton.
+	if int(summary.get("stage_index", 0)) >= Database.stage_count() - 1:
+		_headline.text = "THE DESCENT BEGINS AGAIN"
+		SaveManager.profile["cycle_pending"] = true
+		SaveManager.unlock("ending_cycle")
+		SaveManager.save_profile()
+	else:
+		_headline.text = "THE CAVE KEEPS YOU"
 	var stage := Database.get_stage(int(summary.get("stage_index", 0)))
 	var cls := Database.get_class_data(String(summary.get("class_id", "swordsman")))
 	var mins := int(summary.get("time", 0.0)) / 60
