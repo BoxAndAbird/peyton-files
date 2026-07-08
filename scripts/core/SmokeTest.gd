@@ -50,6 +50,19 @@ func _run() -> void:
 	# Player swings + arrow fire through live combat code.
 	GameManager.player.combat.try_attack()
 	await _wait(0.5)
+	# RMB class mechanics: charged pierce shot fires without crashing.
+	GameManager.player.combat.fire_charged(1.0)
+	await _wait(0.5)
+	_check("charged pierce shot fired", true)
+	# force_stagger path (parry/bash payoff).
+	var victim = null
+	for e in get_tree().get_nodes_in_group("enemies"):
+		if e.has_method("force_stagger"):
+			victim = e
+			break
+	if victim:
+		victim.call("force_stagger")
+	_check("force_stagger works", victim != null)
 	for e in get_tree().get_nodes_in_group("enemies"):
 		if e.has_method("die"):
 			e.call("die")
@@ -103,9 +116,18 @@ func _run() -> void:
 		RunManager.ending_id = ""   # reset so real flow decides later
 
 	# --- 6. complete every stage to VICTORY --------------------------------
+	# Expected objective prop counts per stage (pumps 2, crystals 3, seal 1).
+	var expected_objectives := [0, 2, 3, 1, 0]
+	var objectives_ok := true
 	var guard := 0
 	while GameManager.state != GameManager.State.VICTORY and guard < 12:
 		guard += 1
+		if RunManager.stage_index < expected_objectives.size():
+			if GameManager.current_stage.objective_remaining != expected_objectives[RunManager.stage_index]:
+				objectives_ok = false
+				print("[SMOKE]   objective mismatch on stage %d: %d (expected %d)" % [
+					RunManager.stage_index, GameManager.current_stage.objective_remaining,
+					expected_objectives[RunManager.stage_index]])
 		GameManager.complete_stage()
 		await _wait(0.4)
 		# Upgrade intermission: pick through the real RunManager path.
@@ -124,6 +146,7 @@ func _run() -> void:
 		await _wait(1.8)   # next stage build
 	_check("run reached VICTORY (stages walked: %d)" % guard,
 		GameManager.state == GameManager.State.VICTORY)
+	_check("stage objectives placed (2 pumps / 3 crystals / 1 seal)", objectives_ok)
 
 	# --- 7. fresh run -> death ---------------------------------------------
 	GameManager.start_run("tank")

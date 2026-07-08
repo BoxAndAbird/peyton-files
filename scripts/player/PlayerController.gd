@@ -39,6 +39,13 @@ var _dodge_dir := Vector3.ZERO
 var _slow_mult := 1.0           # movement debuff (spider webs, water)
 var _slow_timer := 0.0
 var _still_time := 0.0          # tank passive accumulator
+
+# --- RMB class mechanic state (bible section 6: aim/guard/charge) -----
+var charge := 0.0               # Archer: 0..1 while holding aim
+var _charge_ready_cued := false
+var guarding := false           # Tank: hold aim to guard (front -60% dmg)
+var _parry_timer := 0.0         # Swordsman: tap aim = 0.28s parry window
+var sneaking := false           # Bandit: hold aim = slow, near-silent, stealth bonus
 var _guarded := false
 var _footstep_accum := 0.0
 var _interact_target = null     # Interactable (untyped: duck-typed prompt_text/interact)
@@ -143,6 +150,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		cam.apply_look((event as InputEventMouseMotion).relative)
 	elif event.is_action_pressed("attack"):
 		combat.try_attack()
+	elif event.is_action_pressed("aim") and stats.class_id == "swordsman":
+		# Swordsman parry: a tapped, committed timing window.
+		_parry_timer = 0.28
+		AudioManager.play("dodge", "SFX", 1.8)
 	elif event.is_action_pressed("dodge"):
 		_try_dodge()
 	elif event.is_action_pressed("interact") and _interact_target:
@@ -172,7 +183,34 @@ func _physics_process(delta: float) -> void:
 		speed *= _slow_mult
 		if _slow_timer <= 0.0:
 			_slow_mult = 1.0
-	var sprinting := Input.is_action_pressed("sprint") and stamina > 1.0 and wish.length_squared() > 0.01
+
+	# --- RMB class mechanic (bible section 6: aim/guard/charge) ----------
+	var aim_held := Input.is_action_pressed("aim")
+	_parry_timer = maxf(_parry_timer - delta, 0.0)
+	match stats.class_id:
+		"archer":
+			if aim_held:
+				charge = minf(charge + delta / 0.8, 1.0)
+				speed *= 0.55   # drawing the bow slows you
+				if charge >= 1.0 and not _charge_ready_cued:
+					_charge_ready_cued = true
+					AudioManager.play("ui_hover", "SFX", 1.6)   # "ready" click
+			elif charge > 0.0:
+				if charge >= 0.35:
+					combat.fire_charged(charge)
+				charge = 0.0
+				_charge_ready_cued = false
+		"tank":
+			guarding = aim_held and stamina > 1.0
+			if guarding:
+				speed *= 0.5
+		"bandit":
+			sneaking = aim_held
+			if sneaking:
+				speed *= 0.5
+
+	var sprinting := Input.is_action_pressed("sprint") and stamina > 1.0 and wish.length_squared() > 0.01 \
+		and not guarding and not sneaking and charge <= 0.0
 	if sprinting:
 		var cost := SPRINT_COST_PER_S * delta
 		if RunManager.active_tags().has("sprint_cost"):
@@ -228,6 +266,8 @@ func _physics_process(delta: float) -> void:
 			_footstep_accum = 0.0
 			AudioManager.play("footstep", "SFX", randf_range(0.9, 1.1))
 			var loud := 1.0 if sprinting else 0.55
+			if sneaking:
+				loud = 0.12   # Bandit sneak: the Blind Stalker's counterplay
 			if RunManager.active_tags().has("no_footprints"):
 				loud *= 0.5
 			EventBus.player_moved_loud.emit(global_position, loud)
@@ -276,7 +316,29 @@ func take_damage(amount: float, source: Node = null) -> void:
 			stamina = minf(stamina + 20.0, stats.max_stamina())
 			EventBus.subtitle_requested.emit("Perfect dodge", 0.8)
 		return
+	# Swordsman PARRY (bible passive: "perfect dodge/parry empowers next
+	# strike and restores stamina"): negates the hit, staggers the attacker.
+	if _parry_timer > 0.0 and stats.class_id == "swordsman":
+		_parry_timer = 0.0
+		combat.empower_next_strike()
+		stamina = minf(stamina + 20.0, stats.max_stamina())
+		AudioManager.play("crit", "SFX", 1.4)
+		EventBus.subtitle_requested.emit("Parried!", 0.8)
+		if source and source.has_method("force_stagger"):
+			source.call("force_stagger")
+		return
 	var final := stats.damage_taken(amount)
+	# Tank GUARD (RMB held): frontal hits cost stamina instead of most health.
+	if guarding and source is Node3D:
+		var to_attacker: Vector3 = ((source as Node3D).global_position - global_position)
+		to_attacker.y = 0.0
+		if to_attacker.length() > 0.1 and facing_dir().dot(to_attacker.normalized()) > 0.2:
+			final *= 0.4
+			stamina = maxf(stamina - 14.0, 0.0)
+			AudioManager.play("hit", "SFX", 0.5)
+			if stamina <= 0.0:
+				guarding = false
+				EventBus.subtitle_requested.emit("Guard broken!", 1.2)
 	if _guarded:
 		final *= 0.75   # tank passive
 	health -= final

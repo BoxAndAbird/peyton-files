@@ -145,7 +145,7 @@ func _on_essence(_amount: int) -> void:
 func _on_stage(index: int, _id: String) -> void:
 	var data := Database.get_stage(index)
 	_stage_lbl.text = "%d. %s" % [index + 1, data["name"]]
-	set_objective("Find the exit gate. Survive.")
+	set_objective(String(data.get("objective", "Find the exit gate. Survive.")))
 	_essence_lbl.text = "Essence: %d" % RunManager.essence
 
 ## Public: stages/events update the objective line through this.

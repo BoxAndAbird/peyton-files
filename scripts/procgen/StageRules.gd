@@ -39,14 +39,98 @@ func setup(p_stage, rng: RandomNumberGenerator) -> void:
 	match String(stage.stage_data["biome"]):
 		"flooded":
 			_setup_water()
+			_setup_pump_objective()
 		"crystal":
 			_setup_mirrors()
+			_setup_crystal_objective()
 		"living":
 			_setup_breathing()
+			_setup_seal_objective()
 		"void":
 			_setup_void()
 	if RunManager.stage_index == 0:
 		_run_tutorial()
+
+# =====================================================================
+#  STAGE OBJECTIVES (bible section 8: each stage's stated objective)
+# =====================================================================
+## Picks N distinct non-key rooms for objective props, seeded.
+func _objective_rooms(count: int) -> Array:
+	var pool: Array = []
+	for r in stage.graph.rooms:
+		if r["role"] != "entrance" and r["role"] != "exit" and r["depth"] >= 1:
+			pool.append(r["id"])
+	var picked: Array = []
+	while picked.size() < count and not pool.is_empty():
+		var id = pool[_rng.randi_range(0, pool.size() - 1)]
+		pool.erase(id)
+		picked.append(id)
+	return picked
+
+## Stage 2: "restore pump wheels or open flood locks before The Drowned Priest"
+func _setup_pump_objective() -> void:
+	stage.objective_remaining = 2
+	stage.objective_hint = "The arena is flooded. Two pump wheels must turn first."
+	var Interactable := load("res://scripts/items/Interactable.gd")
+	for room_id in _objective_rooms(2):
+		var wheel = Interactable.new()
+		wheel.setup("Turn the pump wheel", Color(0.35, 0.75, 0.8), Vector3(1.2, 1.2, 0.4))
+		wheel.position = stage._room_center(room_id) + Vector3(2.0, 0, -2.0)
+		wheel.on_interact = func(_pl):
+			stage.objective_progress()
+			AudioManager.play("hit", "SFX", 0.4)
+			if stage.objective_complete():
+				EventBus.subtitle_requested.emit("The flood locks groan open. The Priest is waiting.", 3.5)
+				_set_hud_objective("Face what the water hides.")
+			else:
+				EventBus.subtitle_requested.emit("The pump turns. Water drains somewhere below. (1/2)", 3.0)
+		stage.add_child(wheel)
+
+## Stage 3: "shatter three resonance crystals to reveal exit"
+func _setup_crystal_objective() -> void:
+	stage.objective_remaining = 3
+	stage.objective_hint = "The way is refracted shut. Three resonance crystals still sing."
+	var Interactable := load("res://scripts/items/Interactable.gd")
+	for room_id in _objective_rooms(3):
+		var crystal = Interactable.new()
+		crystal.setup("Shatter the resonance crystal", Color(0.7, 0.75, 1.0), Vector3(1.0, 2.2, 1.0))
+		crystal.position = stage._room_center(room_id) + Vector3(-2.0, 0, 2.0)
+		crystal.on_interact = func(_pl):
+			stage.objective_progress()
+			AudioManager.play("crit", "SFX", 2.0)   # glass shatter
+			var left: int = stage.objective_remaining
+			if stage.objective_complete():
+				EventBus.subtitle_requested.emit("The last crystal dies. The way down resonates open.", 3.5)
+				_set_hud_objective("Reach the descent gate.")
+			else:
+				EventBus.subtitle_requested.emit("It shatters into silence. (%d remaining)" % left, 3.0)
+				# Shattering is loud: the stage answers ("guarded" objectives).
+				stage.debug_spawn_enemy("crystal_spider")
+		stage.add_child(crystal)
+
+## Stage 4: "burn open the living seal while surviving corruption waves"
+func _setup_seal_objective() -> void:
+	stage.objective_remaining = 1
+	stage.objective_hint = "A living seal covers the gate. Fire would open it."
+	var Interactable := load("res://scripts/items/Interactable.gd")
+	var seal = Interactable.new()
+	seal.setup("Burn open the living seal", Color(0.85, 0.35, 0.3), Vector3(2.4, 2.8, 0.6))
+	seal.position = stage._room_center(stage.graph.get_exit()["id"]) + Vector3(0, 0, -3.6)
+	seal.on_interact = func(_pl):
+		stage.objective_progress()
+		EventBus.subtitle_requested.emit("The lantern flame takes. The seal SCREAMS — survive the corruption!", 4.0)
+		AudioManager.play("hurt", "SFX", 0.4)
+		_set_hud_objective("Survive the corruption waves.")
+		# Burning the seal IS the climax trigger for this stage.
+		stage.start_climax()
+		var tw = seal.create_tween()
+		tw.tween_property(seal, "scale", Vector3(1.0, 0.08, 1.0), 2.0)
+	stage.add_child(seal)
+
+func _set_hud_objective(text: String) -> void:
+	var hud = GameManager.ui.get_hud() if GameManager.ui else null
+	if hud:
+		hud.set_objective(text)
 
 # =====================================================================
 #  FLOODED CAVERNS - water pools (slow player/enemies differently)

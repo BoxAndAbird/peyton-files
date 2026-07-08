@@ -180,6 +180,12 @@ func stagger(seconds: float) -> void:
 	_flash(Color.WHITE)
 	EventBus.subtitle_requested.emit("Interrupted!", 1.2)
 
+## Parry/guard-bash payoff vs bosses: brief flinch, not a full stagger
+## (bosses resist crowd control but the counterplay still reads).
+func force_stagger() -> void:
+	if hp > 0.0:
+		stagger(0.8)
+
 func apply_burn(tick_damage: float, duration: float) -> void:
 	_burn_tick = tick_damage
 	_burn_time = maxf(_burn_time, duration)

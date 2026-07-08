@@ -45,6 +45,10 @@ func empower_next_strike() -> void:
 func try_attack() -> bool:
 	if _cooldown > 0.0:
 		return false
+	# Tank guarding + attack = GUARD BASH (bible section 5: "Tank uses
+	# stamina for guard bash").
+	if stats.class_id == "tank" and player.get("guarding"):
+		return _guard_bash()
 	var rate := stats.attack_rate()
 	if haste_active():
 		rate *= 1.35
@@ -55,6 +59,51 @@ func try_attack() -> bool:
 	else:
 		_melee_swing()
 	return true
+
+## Tank guard bash: stamina-fueled shove that staggers and knocks back
+## everything in the frontal arc. High poise pressure, modest damage.
+func _guard_bash() -> bool:
+	if player.stamina < 30.0:
+		AudioManager.play_ui("denied")
+		return false
+	player.stamina -= 30.0
+	_cooldown = 1.0
+	AudioManager.play("hit", "SFX", 0.6)
+	var origin: Vector3 = player.global_position + Vector3.UP * 1.0
+	var forward: Vector3 = player.facing_dir()
+	for enemy in player.get_tree().get_nodes_in_group("enemies"):
+		var e3 := enemy as Node3D
+		if e3 == null:
+			continue
+		var to: Vector3 = e3.global_position - origin
+		to.y = 0.0
+		if to.length() <= 3.0 and forward.dot(to.normalized()) > 0.3:
+			_apply_hit(e3, 0.7)
+			if e3.has_method("force_stagger"):
+				e3.call("force_stagger")
+			# Knockback (bible class table: Tank strengths include knockback).
+			if e3 is CharacterBody3D:
+				(e3 as CharacterBody3D).velocity += to.normalized() * 9.0 + Vector3.UP * 2.5
+	if player.cam:
+		player.cam.add_trauma(0.25)
+	return true
+
+## Archer charged shot (class passive: "charged shots pierce at high range
+## stat"). charge 0..1 from holding aim; pierces 3 bodies when Range >= 6.
+func fire_charged(charge: float) -> void:
+	if player == null or not player.is_inside_tree():
+		return
+	_cooldown = 1.0 / maxf(stats.attack_rate(), 0.05)
+	AudioManager.play("crit", "SFX", 0.8)
+	var Projectile := load("res://scripts/player/Projectile.gd")
+	var p = Projectile.new()
+	player.get_parent().add_child(p)
+	var aim: Vector3 = player.aim_dir()
+	p.global_position = player.global_position + Vector3.UP * 1.3 + aim * 0.6
+	p._speed = 34.0
+	var pierce := 3 if stats.stat("range") >= 6.0 else 0
+	p.launch(aim, Database.projectile_range(24.0, stats.stat("range")), self,
+		pierce, 1.0 + charge)
 
 # =====================================================================
 #  MELEE
@@ -108,8 +157,8 @@ func _fire_projectile() -> void:
 	p.launch(aim, Database.projectile_range(18.0, stats.stat("range")), self)
 
 ## Projectile callback when it overlaps an enemy.
-func projectile_hit(enemy: Node) -> void:
-	_apply_hit(enemy, 1.0)
+func projectile_hit(enemy: Node, mult := 1.0) -> void:
+	_apply_hit(enemy, mult)
 
 # =====================================================================
 #  DAMAGE RESOLUTION
@@ -125,11 +174,13 @@ func _apply_hit(enemy, mult: float) -> void:
 		dmg *= 1.5
 		_empowered = false
 
-	# Bandit backstab: attacking from behind the enemy's facing.
+	# Bandit passive: "attacks from behind OR FROM STEALTH gain bonus crit
+	# and essence drops." Stealth = holding RMB sneak.
 	if stats.class_id == "bandit" and enemy is Node3D:
 		var enemy_fwd: Vector3 = -(enemy as Node3D).global_transform.basis.z
 		var to_player: Vector3 = (player.global_position - (enemy as Node3D).global_position).normalized()
-		if enemy_fwd.dot(to_player) < -0.3:
+		var behind: bool = enemy_fwd.dot(to_player) < -0.3
+		if behind or player.get("sneaking"):
 			dmg *= 1.4
 			RunManager.add_essence(1)
 

@@ -32,6 +32,18 @@ var _wall_mat: StandardMaterial3D
 # Hollow Mind special rule ("map lies"): direction reveals may point wrong.
 var exit_direction_lies := false
 
+# --- stage objective (bible section 8: pump wheels, resonance crystals,
+# living seal). Set by StageRules; the climax cannot start until complete.
+var objective_remaining := 0
+var objective_hint := ""     # shown when the player pokes the gate too early
+
+func objective_complete() -> bool:
+	return objective_remaining <= 0
+
+## StageRules objective props call this on each step done.
+func objective_progress() -> void:
+	objective_remaining = maxi(objective_remaining - 1, 0)
+
 # --- stage climax (boss arena or elite gauntlet in the exit room) -----
 var arena_cleared := false           # gate opens only when true
 var _fight_started := false
@@ -324,6 +336,11 @@ func _place_exit_gate() -> void:
 		if arena_cleared:
 			EventBus.say("Exit gate opened.")
 			GameManager.complete_stage()
+		elif not objective_complete():
+			# Stage objective first (pump wheels / crystals / seal).
+			EventBus.subtitle_requested.emit(
+				objective_hint if objective_hint != "" else "The gate is sealed.", 3.0)
+			AudioManager.play_ui("denied")
 		else:
 			EventBus.subtitle_requested.emit("The gate is sealed. Something guards it.", 2.5)
 			AudioManager.play_ui("denied")
@@ -347,12 +364,12 @@ func _place_arena_trigger() -> void:
 	trigger.add_child(col)
 	trigger.position = _room_center(graph.get_exit()["id"]) + Vector3.UP
 	trigger.body_entered.connect(func(body: Node3D):
-		if body.is_in_group("player"):
+		if body.is_in_group("player") and objective_complete():
 			start_climax())
 	add_child(trigger)
 
 func start_climax() -> void:
-	if _fight_started or arena_cleared:
+	if _fight_started or arena_cleared or not objective_complete():
 		return
 	_fight_started = true
 	var center := _room_center(graph.get_exit()["id"])

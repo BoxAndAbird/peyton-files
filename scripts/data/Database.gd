@@ -1,4 +1,4 @@
-extends Node
+﻿extends Node
 ## Database.gd  (Autoload singleton: "Database")
 ##
 ## Single source of truth for all tunable gameplay data, kept as plain
@@ -109,6 +109,7 @@ const STAGES := [
 		"light_tint": Color(1.0, 0.85, 0.6), "fog": Color(0.06, 0.05, 0.04),
 		"enemy_pool": ["crawler", "blind_stalker", "mimic"],
 		"boss": "burrower",
+		"objective": "Find the descent gate. Its guardian stirs below.",
 	},
 	{
 		"id": "flooded_caverns", "name": "Flooded Caverns",
@@ -117,6 +118,7 @@ const STAGES := [
 		"light_tint": Color(0.6, 0.8, 1.0), "fog": Color(0.05, 0.08, 0.11),
 		"enemy_pool": ["crawler", "drowned", "tunnel_screamer", "crystal_spider"],
 		"boss": "drowned_priest",
+		"objective": "Restore the two pump wheels, then face what the water hides.",
 	},
 	{
 		"id": "crystal_abyss", "name": "Crystal Abyss",
@@ -125,6 +127,7 @@ const STAGES := [
 		"light_tint": Color(0.7, 0.7, 1.0), "fog": Color(0.07, 0.06, 0.10),
 		"enemy_pool": ["crystal_spider", "watcher", "bone_collector", "blind_stalker"],
 		"boss": "",  # elite gauntlet (bible: stage 3/4 may use elite gauntlets)
+		"objective": "Shatter the three resonance crystals to reveal the way down.",
 	},
 	{
 		"id": "living_depths", "name": "Living Depths",
@@ -133,6 +136,7 @@ const STAGES := [
 		"light_tint": Color(1.0, 0.45, 0.4), "fog": Color(0.10, 0.03, 0.03),
 		"enemy_pool": ["shadow_parasite", "hollow_monk", "faceless", "bone_collector"],
 		"boss": "",  # elite gauntlet
+		"objective": "Burn open the living seal. Survive what wakes.",
 	},
 	{
 		"id": "hollow_mind", "name": "Hollow Mind",
@@ -141,6 +145,7 @@ const STAGES := [
 		"light_tint": Color(0.9, 0.9, 0.95), "fog": Color(0.09, 0.09, 0.11),
 		"enemy_pool": ["faceless", "watcher", "hollow_monk", "shadow_parasite", "tunnel_screamer"],
 		"boss": "ancient_below",
+		"objective": "Reach the memory altar. End this.",
 	},
 ]
 

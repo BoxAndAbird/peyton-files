@@ -151,6 +151,32 @@ DONE (stage special rules, bible sections 7-8, via `StageRules.gd`):
 - **Forgotten Entrance**: three timed tutorial lines (movement/sprint noise,
   dodge/lantern, essence/pack/gate).
 
+DONE (RMB class mechanics, bible sections 4-6):
+- **Archer**: hold RMB to draw — slows you, charges to full in 0.8s (audible
+  click), release fires a fast shot at up to 2x damage that PIERCES 3 bodies
+  when Range >= 6 (the class passive, literally).
+- **Tank**: hold RMB to guard — frontal hits cost stamina instead of most
+  health (x0.4 damage); attack while guarding = GUARD BASH (30 stamina):
+  damages, staggers and knocks back everything in the frontal arc.
+- **Swordsman**: tap RMB for a 0.28s PARRY — negates the hit, staggers the
+  attacker, empowers the next strike and restores stamina (the passive).
+- **Bandit**: hold RMB to SNEAK — half speed, footsteps nearly silent (Blind
+  Stalkers can't track you), and all attacks get the stealth bonus.
+- Bosses flinch (0.8s) from parry/bash instead of fully staggering.
+
+DONE (per-stage objectives, bible section 8):
+- Stage 2: two PUMP WHEELS must be turned before the Priest's arena unlocks.
+- Stage 3: three RESONANCE CRYSTALS to shatter — each shatter is loud and
+  answered by a crystal spider.
+- Stage 4: the LIVING SEAL over the gate must be burned — doing so IS the
+  climax trigger ("survive the corruption waves").
+- Stages 1/5 keep their stated objectives (guardian gate / memory altar).
+- HUD objective line now shows each stage's real objective; gates and arena
+  triggers refuse to start the climax until the objective is complete.
+
+Headless verification: 22/22 smoke checks pass (`--smoke`).
+
 NEXT (remaining polish, beyond the doc's core spec):
-1. Minimap, lock-on, colorblind palettes, performance pass
-2. First Godot editor run: fix the parse-error batch, then full QA checklist
+1. Minimap, lock-on, colorblind palettes, surface footsteps, projectile
+   pooling, hidden secret rooms, attackable NPCs (merchant flees)
+2. Human playtest: lighting mood, camera feel, difficulty tuning

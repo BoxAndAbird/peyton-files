@@ -420,6 +420,12 @@ func take_damage(amount: float, _source: Node = null) -> void:
 	elif state == AIState.IDLE or state == AIState.PATROL:
 		_enter_state(AIState.CHASE)   # retaliate
 
+## Instant stagger (Swordsman parry, Tank guard bash).
+func force_stagger() -> void:
+	if state != AIState.DEAD:
+		_poise = 0.0
+		_enter_state(AIState.STAGGERED)
+
 func apply_burn(tick_damage: float, duration: float) -> void:
 	_burn_tick_dmg = tick_damage
 	_burn_time = maxf(_burn_time, duration)
