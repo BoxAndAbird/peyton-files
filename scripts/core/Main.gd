@@ -51,6 +51,13 @@ func _ready() -> void:
 	GameManager.bind(world, ui)
 	EventBus.say("Main booted. World + UI bound.")
 
+	# Headless end-to-end verification: godot --headless --path . -- --smoke
+	if OS.get_cmdline_user_args().has("--smoke"):
+		var SmokeTest := load("res://scripts/core/SmokeTest.gd")
+		var st: Node = SmokeTest.new()
+		st.name = "SmokeTest"
+		add_child(st)
+
 func _on_brightness(value: float) -> void:
 	# Brightness 0.5-1.5 and gamma map onto the environment adjustments.
 	if world_env and world_env.environment:

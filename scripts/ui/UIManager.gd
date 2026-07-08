@@ -20,7 +20,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	# Font size accessibility (bible: Small/Normal/Large).
 	var fs := int(SettingsManager.get_value("font_size"))
-	var base := [15, 18, 22][clampi(fs, 0, 2)]
+	var base: int = [15, 18, 22][clampi(fs, 0, 2)]
 	theme = UIKit.make_theme(base)
 
 	_build_screens()
