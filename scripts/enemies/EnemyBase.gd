@@ -45,6 +45,10 @@ var is_hallucination := false
 # active-enemy cap (Appendix J) holds. Dormant = no physics, no hearing.
 var dormant := false
 
+# Movement debuff (Flooded Caverns water; webs). 1.0 = unaffected.
+var _slow_mult := 1.0
+var _slow_timer := 0.0
+
 var state: int = AIState.IDLE
 var staggered := false
 var _state_timer := 0.0
@@ -207,6 +211,10 @@ func _physics_process(delta: float) -> void:
 		return
 	_state_timer += delta
 	_attack_timer = maxf(_attack_timer - delta, 0.0)
+	if _slow_timer > 0.0:
+		_slow_timer -= delta
+		if _slow_timer <= 0.0:
+			_slow_mult = 1.0
 	_process_burn(delta)
 
 	var player := GameManager.player as Node3D
@@ -336,8 +344,14 @@ func _reveal() -> void:
 	senses = was
 	_enter_state(AIState.CHASE)
 
+## Movement debuff (water, webs); mirrors PlayerController.apply_slow.
+func apply_slow(mult: float, duration: float) -> void:
+	_slow_mult = minf(_slow_mult, clampf(mult, 0.2, 1.0))
+	_slow_timer = maxf(_slow_timer, duration)
+
 # --- movement -----------------------------------------------------------
 func _move_toward(target: Vector3, speed: float, _delta: float) -> void:
+	speed *= _slow_mult
 	if speed <= 0.0:
 		velocity.x = 0.0
 		velocity.z = 0.0

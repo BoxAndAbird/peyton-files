@@ -137,6 +137,20 @@ DONE (document-compliance step, per Appendices B/E/F/G2/J):
 - **Boss debug per Appendix F**: `boss_phase <n>`, `boss_invuln`, `boss_log`
   (attack pattern logging). Statistics now persist at run end.
 
+DONE (stage special rules, bible sections 7-8, via `StageRules.gd`):
+- **Flooded Caverns**: glowing waist-deep pools slow the player x0.65 and
+  enemies x0.5 — but the Drowned are immune ("slows player/enemies
+  differently").
+- **Crystal Abyss**: 3-5 mirror silhouettes — dark enemy shapes with a red
+  eye-glint that shatter like glass when approached.
+- **Living Depths**: room lights pulse with a heartbeat; when combat ends the
+  walls visibly exhale (audiovisual, navmesh-safe).
+- **Hollow Mind**: two counterfeit exit gates (interacting costs 5 sanity as
+  they dissolve), floating drifting rocks, and direction reveals LIE half the
+  time — with a subtle tell ("the ink is still wet").
+- **Forgotten Entrance**: three timed tutorial lines (movement/sprint noise,
+  dodge/lantern, essence/pack/gate).
+
 NEXT (remaining polish, beyond the doc's core spec):
-1. Stage special rules (water slow zones, mirror decoys, breathing rooms, map lies)
-2. Minimap, lock-on, colorblind palettes, performance pass
+1. Minimap, lock-on, colorblind palettes, performance pass
+2. First Godot editor run: fix the parse-error batch, then full QA checklist

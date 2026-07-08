@@ -29,6 +29,9 @@ var _geometry_root: Node3D
 var _floor_mat: StandardMaterial3D
 var _wall_mat: StandardMaterial3D
 
+# Hollow Mind special rule ("map lies"): direction reveals may point wrong.
+var exit_direction_lies := false
+
 # --- stage climax (boss arena or elite gauntlet in the exit room) -----
 var arena_cleared := false           # gate opens only when true
 var _fight_started := false
@@ -87,6 +90,12 @@ func build(p_stage_data: Dictionary, rng: RandomNumberGenerator) -> void:
 	_place_pickups()
 	_place_helper()
 	_spawn_enemies()
+	# Per-biome special rules (water, mirrors, breathing, map lies, tutorial).
+	var StageRules := load("res://scripts/procgen/StageRules.gd")
+	var rules: Node = StageRules.new()
+	rules.name = "StageRules"
+	add_child(rules)
+	rules.setup(self, _rng)
 	EventBus.say("Stage '%s' built: %d rooms, %d cells." % [stage_data["id"], graph.rooms.size(), carved.size()])
 
 # --- carving ----------------------------------------------------------
@@ -514,16 +523,24 @@ func _place_helper() -> void:
 		return   # never more than one per stage
 
 ## Announce the exit direction (Cartographer NPC + Cartographer Mark upgrade).
+## On Hollow Mind the MAP LIES: half the time the compass points the wrong
+## way, with a tell for players paying attention (bible section 8.5).
 func reveal_exit_direction() -> void:
 	var pl = GameManager.player
 	if pl == null:
 		return
 	var exit_pos := _room_center(graph.get_exit()["id"])
 	var to: Vector3 = exit_pos - pl.global_position
+	var lying := exit_direction_lies and randf() < 0.5
+	if lying:
+		to = -to   # point away from the truth
 	var dirs := ["east", "north-east", "north", "north-west", "west", "south-west", "south", "south-east"]
 	var ang := fposmod(atan2(-to.z, to.x), TAU)
 	var compass: String = dirs[int(round(ang / (TAU / 8.0))) % 8]
 	EventBus.subtitle_requested.emit("The descent gate lies to the %s, %d paces." % [compass, int(to.length())], 4.0)
+	if lying:
+		# The tell: the handwriting is wrong. Perceptive players can distrust it.
+		EventBus.subtitle_requested.emit("...the ink is still wet. You have not written anything.", 3.0)
 	var hud = GameManager.ui.get_hud() if GameManager.ui else null
 	if hud:
 		hud.set_objective("Exit: %s, ~%dm" % [compass, int(to.length())])
