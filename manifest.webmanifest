@@ -1,13 +1,13 @@
 {
   "name": "The Peyton Files",
   "short_name": "Peyton Files",
-  "description": "A point-and-click mystery. Episode 1: The Closing Notice.",
+  "description": "A point-and-click mystery in three episodes. The Closing Notice · The Transfer · The Keeper.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#14161b",
-  "theme_color": "#14161b",
+  "background_color": "#0b0c10",
+  "theme_color": "#0b0c10",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }

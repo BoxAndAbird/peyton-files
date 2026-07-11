@@ -1,10 +1,17 @@
 /* The Peyton Files — offline cache.
    Network-first so updates always arrive; cache is the offline fallback. */
-const CACHE = "peyton-files-v2";
+const CACHE = "peyton-files-v3";
 const ASSETS = [
   ".", "index.html", "css/style.css",
-  "js/data.js", "js/art.js", "js/audio.js", "js/board.js",
+  "js/data.js", "js/data2.js", "js/data3.js",
+  "js/art.js", "js/audio.js", "js/cinema.js", "js/board.js",
   "js/file.js", "js/world.js", "js/main.js",
+  "art/bg_storage.webp", "art/bg_diner.webp", "art/bg_motel.webp",
+  "art/bg_annex.webp", "art/bg_terminal.webp", "art/bg_gas.webp", "art/bg_lakehouse.webp",
+  "art/cut_lakecity.webp", "art/cut_road.webp", "art/cut_lakehouse.webp",
+  "art/prop_unit14.webp", "art/prop_odom.webp", "art/title.webp",
+  "art/pt_kessler.webp", "art/pt_gerald.webp", "art/pt_denise.webp", "art/pt_whitlocks.webp",
+  "art/pt_reyes.webp", "art/pt_wes.webp", "art/pt_merle.webp", "art/pt_abernathy.webp",
   "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png",
 ];
 

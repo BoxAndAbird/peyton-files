@@ -1,6 +1,6 @@
 /* THE PEYTON FILES — the corkboard / conspiracy wall.
-   Pins appear as the case develops; red string connects them.
-   The "Run the String" puzzle happens here. */
+   Pins accumulate across all three episodes; red string connects them.
+   The "Run the String" puzzles happen here. */
 "use strict";
 
 const PF_BOARD = (() => {
@@ -11,26 +11,23 @@ const PF_BOARD = (() => {
   const AUTO = [
     ["p_case","p_storage"], ["p_case","p_pruitt"], ["p_case","p_diner"],
     ["p_route9","p_motel"],
+    ["p_motel","p_annex"], ["p_annex","p_locker"],
+    ["p_vol1","p_lakehouse"],
   ];
 
   let stringMode = false;
+  let stringKey = "string";
   let sel = null;
 
   function pinVisible(pin) {
     const S = PF.S;
-    switch (pin.at) {
-      case "file1":    return true;
-      case "photo":    return S.solved.photo;
-      case "redact":   return S.solved.redact;
-      case "crossref": return S.solved.crossref;
-      case "timeline": return S.solved.timeline;
-      case "string":   return S.solved.string;
-      default:         return false;
-    }
+    if (pin.at === "file1") return true;
+    return !!S.solved[pin.at];
   }
 
-  function open(asPuzzle) {
-    stringMode = !!asPuzzle && !PF.S.solved.string;
+  function open(asPuzzle, key) {
+    stringKey = key || "string";
+    stringMode = !!asPuzzle && !PF.S.solved[stringKey];
     sel = null;
     PF.showScreen("board-mode");
     render();
@@ -43,7 +40,7 @@ const PF_BOARD = (() => {
 
   function render() {
     const bm = $("#board-mode");
-    const def = D.puzzles.string;
+    const def = D.puzzles[stringKey];
     bm.innerHTML = `<div class="case-header">
         <div class="case-id"><b>THE BOARD</b>${D.meta.caseNo} — red string &amp; pins</div>
         <button class="icon-btn" id="bd-back">FILE</button>
@@ -103,7 +100,7 @@ const PF_BOARD = (() => {
       PF.toast(pin.label);
       return;
     }
-    const def = D.puzzles.string;
+    const def = D.puzzles[stringKey];
     if (!sel) {
       sel = pin.id;
       el.classList.add("sel");
@@ -128,13 +125,13 @@ const PF_BOARD = (() => {
       render();
       const doneAll = required.every(r => PF.S.connections.map(([a,b]) => pairKey(a,b)).includes(r));
       if (doneAll) {
-        PF.S.solved.string = true;
+        PF.S.solved[stringKey] = true;
         PF.save();
         stringMode = false;
         AU.sfx.good();
         PF.toast(def.toast);
         setTimeout(() => {
-          render(); // motel pin drops in
+          render(); // the location pin drops in
           AU.sfx.pin();
           PF.narrate(def.solvedNarration, () => close());
         }, 700);

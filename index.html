@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#14161b">
+<meta name="theme-color" content="#0b0c10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -18,7 +18,7 @@
 <div id="app">
   <!-- Title screen -->
   <div id="title-screen" class="screen"></div>
-  <!-- Cinematics (cold open, establishing cards, epilogue beats) -->
+  <!-- Cinematics (cold opens, establishing cards, episode stingers) -->
   <div id="cinema" class="screen hidden"></div>
   <!-- Mode 1: The File -->
   <div id="file-mode" class="screen hidden"></div>
@@ -34,10 +34,16 @@
   <div id="narration" class="hidden"></div>
   <!-- Toast notices ("Evidence added", etc.) -->
   <div id="toast" class="hidden"></div>
+  <!-- Atmosphere: vignette + animated film grain over everything -->
+  <div id="vignette"></div>
+  <div id="grain"></div>
 </div>
 <script src="js/data.js"></script>
+<script src="js/data2.js"></script>
+<script src="js/data3.js"></script>
 <script src="js/art.js"></script>
 <script src="js/audio.js"></script>
+<script src="js/cinema.js"></script>
 <script src="js/board.js"></script>
 <script src="js/file.js"></script>
 <script src="js/world.js"></script>

@@ -1,16 +1,11 @@
 /* THE PEYTON FILES — Mode 1: "The File".
-   Desk view, document binder, and the file puzzles. */
+   Desk view, document binder, and the file puzzles — all three episodes. */
 "use strict";
 
 const PF_FILE = (() => {
   const D = PF_DATA, A = PF_ART, AU = PF_AUDIO;
   const $ = (s) => document.querySelector(s);
 
-  const CYCLES = {
-    file1: { puzzles: ["photo","redact"],    loc: "storage" },
-    file2: { puzzles: ["crossref","cipher"], loc: "diner" },
-    file3: { puzzles: ["timeline","string"], loc: "motel" },
-  };
   const PUZZLE_LABELS = {
     photo:    ["Reassemble the Photo", "Nine torn pieces."],
     redact:   ["Decode the Memo", "Two redactions."],
@@ -18,7 +13,23 @@ const PF_FILE = (() => {
     cipher:   ["Decode the Matchbook", "Ledger shorthand: 6 — 6 / 3."],
     timeline: ["Reconstruct the 48 Hours", "Five timestamps."],
     string:   ["Run the String", "Connect the route on the board."],
+    redact2:  ["Decode the Routing Memo", "Two redactions. Same bored hand."],
+    crossref2:["Cross-Reference", "Two reports, three years apart."],
+    cipher2:  ["Decode the Claim Slip", "Vol. 2 shorthand: 5 — 44 / 8."],
+    timeline2:["Rebuild Thursday Night", "Five timestamps."],
+    photo3:   ["Reassemble the 1931 Photo", "Nine torn pieces. Again."],
+    cipher3:  ["Read the Deed Margin", "Shorthand: 8 — 0 / 9."],
+    timeline3:["Reconstruct His Three Days", "Five records."],
+    string2:  ["Run the Last String", "The board is waiting."],
   };
+  const PUZZLE_ICON = (p) =>
+    p.startsWith("photo") ? "photo" : p.startsWith("cipher") ? "match" : "memo";
+  /* which key document a cipher shows */
+  const CIPHER_KEYDOC = { cipher: "d_key", cipher2: "d_key2", cipher3: "d_key2" };
+  /* which redaction puzzle builds which doc */
+  const REDACT_DOC = { d_memo: "redact", d_memo2: "redact2" };
+  /* board-string puzzles need their timeline first */
+  const STRING_NEEDS = { string: "timeline", string2: "timeline3" };
 
   const shuffle = (arr) => {
     const a = arr.slice();
@@ -29,15 +40,23 @@ const PF_FILE = (() => {
     return a;
   };
 
+  const cycleOf = (ch) => {
+    const m = D.chapterMeta[ch];
+    return (m && m.type === "file") ? { puzzles: m.puzzles, loc: m.loc } : null;
+  };
+
   /* ---------------- desk ---------------- */
   function render() {
     const S = PF.S;
-    const cyc = CYCLES[S.chapter];
-    const stampCls = S.chapter === "epilogue" && PF.flag("ep_stamped") ? "unresolved" : "";
-    const stampTxt = stampCls ? "UNRESOLVED" : "ACTIVE";
+    const meta = D.chapterMeta[S.chapter] || { ep: 1 };
+    const ep = D.episodes[meta.ep] || D.episodes[1];
+    const cyc = cycleOf(S.chapter);
+    let stampCls = "", stampTxt = "ACTIVE";
+    if (PF.flag("ep_stamped_pending")) { stampCls = "pending"; stampTxt = "PENDING"; }
+    else if (PF.flag("ep_stamped") && meta.ep === 1 && S.chapter === "ep1end") { stampCls = "unresolved"; stampTxt = "UNRESOLVED"; }
 
     let html = `<div class="case-header">
-      <div class="case-id"><b>${D.meta.caseNo} — VOSS, P.</b>${D.meta.title} · EP. 1</div>
+      <div class="case-id"><b>${ep.caseNo} — VOSS, P.</b>${D.meta.title} · ${ep.num.replace("EPISODE ","EP. ")}</div>
       <div class="status-stamp ${stampCls}" id="hdr-stamp">${stampTxt}</div>
       <button class="icon-btn" id="fm-board">BOARD</button>
       <button class="icon-btn" id="fm-snd">${AU.muted ? "MUTED" : "SND"}</button>
@@ -60,7 +79,7 @@ const PF_FILE = (() => {
         for (const p of cyc.puzzles) {
           const done = S.solved[p];
           html += `<div class="doc-card" data-puzzle="${p}">
-            <div class="d-ic">${A.ICONS[p === "photo" ? "photo" : p === "cipher" ? "match" : "memo"]}</div>
+            <div class="d-ic">${A.ICONS[PUZZLE_ICON(p)]}</div>
             <div class="d-t"><b>${PUZZLE_LABELS[p][0]}</b><span>${PUZZLE_LABELS[p][1]}</span></div>
             <div class="badge ${done ? "done" : ""}">${done ? "SOLVED" : "OPEN"}</div>
           </div>`;
@@ -91,7 +110,7 @@ const PF_FILE = (() => {
       e.target.textContent = AU.muted ? "MUTED" : "SND";
     });
     const go = fm.querySelector("#fm-go");
-    go && go.addEventListener("click", () => PF.travel(CYCLES[PF.S.chapter].loc));
+    go && go.addEventListener("click", () => PF.travel(cycleOf(PF.S.chapter).loc));
     fm.querySelectorAll("[data-puzzle]").forEach(el =>
       el.addEventListener("click", () => openPuzzle(el.getAttribute("data-puzzle"))));
     fm.querySelectorAll("[data-doc]").forEach(el =>
@@ -100,8 +119,9 @@ const PF_FILE = (() => {
 
   function setStamp(mode) {
     if (mode === "unresolved") PF.setFlag("ep_stamped");
+    if (mode === "pending") PF.setFlag("ep_stamped_pending");
     const el = $("#hdr-stamp");
-    if (el) { el.textContent = "UNRESOLVED"; el.classList.add("unresolved"); }
+    if (el) { el.textContent = mode.toUpperCase(); el.classList.add(mode); }
   }
 
   /* ---------------- overlay helpers ---------------- */
@@ -117,7 +137,7 @@ const PF_FILE = (() => {
   function closeOverlay() {
     $("#overlay").classList.add("hidden");
     $("#overlay").innerHTML = "";
-    render();
+    if ((D.chapterMeta[PF.S.chapter] || {}).type !== "world") render();
   }
 
   /* ---------------- documents ---------------- */
@@ -127,44 +147,63 @@ const PF_FILE = (() => {
     const d = D.docs.find(x => x.id === id);
     if (!d) return;
 
-    if (id === "d_photo") {
-      if (S.solved.photo) {
-        openOverlay(`<div class="polaroid">${A.photoSVG()}<div class="ph-cap">the storage place — LOOK AT THE DOOR. Unit 14.</div></div>`);
+    if (id === "d_photo" || id === "d_photo31") {
+      const pKey = id === "d_photo" ? "photo" : "photo3";
+      const art = pKey === "photo" ? A.photoSVG() : A.photo1931SVG();
+      const cap = pKey === "photo" ? "the storage place — LOOK AT THE DOOR. Unit 14."
+                                   : "Whitmore Lake House, 1931 — LOOK AT THE WINDOW. The lamp.";
+      if (S.solved[pKey]) {
+        openOverlay(`<div class="polaroid">${art}<div class="ph-cap">${cap}</div></div>`);
       } else {
         openOverlay(`<div class="paper">${d.body}</div>`,
           `<button class="close-btn" data-close>BACK</button>
-           <button class="action-btn" data-act="photo">REASSEMBLE</button>`);
-        $("#overlay [data-act]").addEventListener("click", () => openPuzzle("photo"));
+           <button class="action-btn" data-act>REASSEMBLE</button>`);
+        $("#overlay [data-act]").addEventListener("click", () => openPuzzle(pKey));
       }
       return;
     }
-    if (id === "d_memo") {
-      if (S.solved.redact) {
-        openOverlay(`<div class="paper">${memoHTML(true)}</div>`);
+    if (REDACT_DOC[id]) {
+      const pKey = REDACT_DOC[id];
+      if (S.solved[pKey]) {
+        openOverlay(`<div class="paper">${memoHTML(pKey, true)}</div>`);
       } else {
-        openOverlay(`<div class="paper">${memoHTML(false)}</div>`,
+        openOverlay(`<div class="paper">${memoHTML(pKey, false)}</div>`,
           `<button class="close-btn" data-close>BACK</button>
-           <button class="action-btn" data-act="redact">DECODE</button>`);
-        $("#overlay [data-act]").addEventListener("click", () => openPuzzle("redact"));
+           <button class="action-btn" data-act>DECODE</button>`);
+        $("#overlay [data-act]").addEventListener("click", () => openPuzzle(pKey));
       }
       return;
     }
     if (id === "d_matchbook" && !S.solved.cipher && PF.S.chapter === "file2") {
       openOverlay(`<div class="paper">${d.body}</div>`,
         `<button class="close-btn" data-close>BACK</button>
-         <button class="action-btn" data-act="cipher">DECODE THE CODE</button>`);
+         <button class="action-btn" data-act>DECODE THE CODE</button>`);
       $("#overlay [data-act]").addEventListener("click", () => openPuzzle("cipher"));
       return;
     }
-    openOverlay(`<div class="paper"><div class="stamp-red">${D.meta.caseNo}</div>${d.body}</div>`);
+    if (id === "d_manifest" && !S.solved.cipher2 && PF.S.chapter === "file5") {
+      openOverlay(`<div class="paper"><div class="stamp-red">31-C</div>${d.body}</div>`,
+        `<button class="close-btn" data-close>BACK</button>
+         <button class="action-btn" data-act>DECODE THE MARGIN</button>`);
+      $("#overlay [data-act]").addEventListener("click", () => openPuzzle("cipher2"));
+      return;
+    }
+    if (id === "d_deed" && !S.solved.cipher3 && PF.S.chapter === "file6") {
+      openOverlay(`<div class="paper"><div class="stamp-red">1931</div>${d.body}</div>`,
+        `<button class="close-btn" data-close>BACK</button>
+         <button class="action-btn" data-act>READ THE MARGIN</button>`);
+      $("#overlay [data-act]").addEventListener("click", () => openPuzzle("cipher3"));
+      return;
+    }
+    const epMeta = D.episodes[(D.chapterMeta[PF.S.chapter] || { ep: 1 }).ep] || D.episodes[1];
+    openOverlay(`<div class="paper"><div class="stamp-red">${epMeta.caseNo}</div>${d.body}</div>`);
   }
 
-  /* Render the memo body from puzzle state (the doc IS the puzzle). */
-  function memoHTML(solvedAll, reveal) {
-    const def = D.puzzles.redact;
-    const S = PF.S;
+  /* Render a redaction-memo body from puzzle state (the doc IS the puzzle). */
+  function memoHTML(pKey, solvedAll, reveal) {
+    const def = D.puzzles[pKey];
     const shown = reveal || def.slots.map(() => solvedAll);
-    let out = `<h3>Internal — Do Not Distribute</h3><div class="meta">RE: ACCOUNT SERVICES · ROUTING: L. ONLY</div>`;
+    let out = `<h3>${def.intro.split("\n")[0]}</h3><div class="meta">${def.intro.split("\n")[1] || ""} · ROUTING: L. ONLY</div>`;
     for (const line of def.lines) {
       if (line.slot === -1) { out += `<p>${line.pre}</p>`; continue; }
       const s = def.slots[line.slot];
@@ -180,31 +219,38 @@ const PF_FILE = (() => {
   function openPuzzle(p) {
     // A solved puzzle re-opens as a read-only review — never replays the solve chain.
     if (PF.S.solved[p]) return reviewSolved(p);
-    // The board string needs the Route 9 pin, which only appears once the timeline is done.
-    if (p === "string" && !PF.S.solved.timeline) {
+    // Board strings need their pins, which appear once the matching timeline is done.
+    if (STRING_NEEDS[p] && !PF.S.solved[STRING_NEEDS[p]]) {
       PF.toast("Reconstruct the timeline first — the board's still missing a pin.");
       return;
     }
-    if (p === "photo") return puzzlePhoto();
-    if (p === "redact") return puzzleRedact();
-    if (p === "crossref") return puzzleCrossref();
-    if (p === "cipher") return puzzleCipher();
-    if (p === "timeline") return puzzleTimeline();
-    if (p === "string") return PF_BOARD.open(true);
+    if (p === "photo")    return puzzlePhoto("photo", A.photoSVG());
+    if (p === "photo3")   return puzzlePhoto("photo3", A.photo1931SVG());
+    if (p === "redact" || p === "redact2") return puzzleRedact(p);
+    if (p === "crossref" || p === "crossref2") return puzzleCrossref(p);
+    if (p.startsWith("cipher")) return puzzleCipher(p);
+    if (p.startsWith("timeline")) return puzzleTimeline(p);
+    if (p === "string")   return PF_BOARD.open(true, "string");
+    if (p === "string2")  return PF_BOARD.open(true, "string2");
   }
 
   /* Read-only review of an already-solved puzzle (no markSolved / narration replay). */
   function reviewSolved(p) {
     if (p === "photo")    return openDoc("d_photo");
+    if (p === "photo3")   return openDoc("d_photo31");
     if (p === "redact")   return openDoc("d_memo");
+    if (p === "redact2")  return openDoc("d_memo2");
     if (p === "cipher")   return openDoc("d_matchbook");
+    if (p === "cipher2")  return openDoc("d_manifest");
+    if (p === "cipher3")  return openDoc("d_deed");
     if (p === "crossref") return openDoc("d_ledger");
-    if (p === "string")   return PF_BOARD.open(false);
-    if (p === "timeline") {
-      const def = D.puzzles.timeline;
+    if (p === "crossref2")return openDoc("d_intake");
+    if (p === "string" || p === "string2") return PF_BOARD.open(false);
+    if (p.startsWith("timeline")) {
+      const def = D.puzzles[p];
       const rows = def.items.slice().sort((a,b)=>a.order-b.order)
         .map((it,i)=>`<div class="tl-item picked"><div class="tl-n">${i+1}</div><div><b>${it.tag}</b>${it.text}</div></div>`).join("");
-      openOverlay(`<div class="pz-head"><b>THE 48 HOURS</b><span>Reconstructed.</span></div><div class="tl-list">${rows}</div>`);
+      openOverlay(`<div class="pz-head"><b>RECONSTRUCTED</b><span>The order holds.</span></div><div class="tl-list">${rows}</div>`);
     }
   }
 
@@ -221,8 +267,8 @@ const PF_FILE = (() => {
   }
 
   /* --- photo reassembly: tap two tiles to swap --- */
-  function puzzlePhoto() {
-    const def = D.puzzles.photo;
+  function puzzlePhoto(pKey, artSVG) {
+    const def = D.puzzles[pKey];
     let perm = shuffle([0,1,2,3,4,5,6,7,8]);
     while (perm.every((v,i) => v === i)) perm = shuffle(perm);
     const ov = openOverlay(`
@@ -237,7 +283,7 @@ const PF_FILE = (() => {
         const t = document.createElement("div");
         t.className = "tile" + (pos === sel ? " sel" : "");
         const col = seg % 3, row = Math.floor(seg / 3);
-        t.innerHTML = A.photoSVG();
+        t.innerHTML = artSVG;
         const svg = t.firstElementChild;
         svg.style.left = (-col * 100) + "%";
         svg.style.top = (-row * 100) + "%";
@@ -246,7 +292,7 @@ const PF_FILE = (() => {
       });
     }
     function tap(pos) {
-      if (PF.S.solved.photo) return;
+      if (PF.S.solved[pKey]) return;
       AU.sfx.paper();
       if (sel === -1) { sel = pos; }
       else if (sel === pos) { sel = -1; }
@@ -256,8 +302,8 @@ const PF_FILE = (() => {
         if (perm.every((v,i) => v === i)) {
           draw();
           grid.classList.add("solved");
-          markSolved("photo");
-          finishPuzzle("photo");
+          markSolved(pKey);
+          finishPuzzle(pKey);
           return;
         }
       }
@@ -267,12 +313,12 @@ const PF_FILE = (() => {
   }
 
   /* --- redaction decode: tap a bar, pick the word --- */
-  function puzzleRedact() {
-    const def = D.puzzles.redact;
+  function puzzleRedact(pKey) {
+    const def = D.puzzles[pKey];
     const revealed = def.slots.map(() => false);
     const ov = openOverlay(`
       <div class="pz-head"><b>${def.title}</b><span>${def.hint}</span></div>
-      <div class="paper" id="pz-memo">${memoHTML(false, revealed)}</div>
+      <div class="paper" id="pz-memo">${memoHTML(pKey, false, revealed)}</div>
       <div class="choice-row" id="pz-choices"></div>`);
     let current = -1;
 
@@ -291,7 +337,7 @@ const PF_FILE = (() => {
       const row = ov.querySelector("#pz-choices");
       if (current < 0) { row.innerHTML = ""; return; }
       row.innerHTML = "";
-      shuffle(D.puzzles.redact.slots[current].options).forEach(opt => {
+      shuffle(def.slots[current].options).forEach(opt => {
         const b = document.createElement("button");
         b.className = "choice-chip";
         b.textContent = opt;
@@ -299,9 +345,9 @@ const PF_FILE = (() => {
           if (opt === def.slots[current].answer) {
             revealed[current] = true;
             AU.sfx.stamp();
-            ov.querySelector("#pz-memo").innerHTML = memoHTML(false, revealed);
+            ov.querySelector("#pz-memo").innerHTML = memoHTML(pKey, false, revealed);
             current = -1; drawChoices(); wire();
-            if (revealed.every(Boolean)) { markSolved("redact"); finishPuzzle("redact"); }
+            if (revealed.every(Boolean)) { markSolved(pKey); finishPuzzle(pKey); }
           } else {
             b.classList.add("bad"); AU.sfx.bad();
             setTimeout(() => b.classList.remove("bad"), 400);
@@ -314,8 +360,8 @@ const PF_FILE = (() => {
   }
 
   /* --- cross-reference: tap the matching detail in each document --- */
-  function puzzleCrossref() {
-    const def = D.puzzles.crossref;
+  function puzzleCrossref(pKey) {
+    const def = D.puzzles[pKey];
     const a = D.docs.find(d => d.id === def.docA), b = D.docs.find(d => d.id === def.docB);
     const ov = openOverlay(`
       <div class="pz-head"><b>${def.title}</b><span>${def.hint}</span></div>
@@ -333,8 +379,8 @@ const PF_FILE = (() => {
           const ok = (sel.a === def.pair[0] && sel.b === def.pair[1]) ||
                      (sel.a === def.pair[1] && sel.b === def.pair[0]);
           if (ok) {
-            markSolved("crossref");
-            finishPuzzle("crossref");
+            markSolved(pKey);
+            finishPuzzle(pKey);
           } else {
             AU.sfx.bad();
             setTimeout(() => {
@@ -347,10 +393,10 @@ const PF_FILE = (() => {
     });
   }
 
-  /* --- cipher: decode 6 — 6 / 3 with the shorthand key --- */
-  function puzzleCipher() {
-    const def = D.puzzles.cipher;
-    const keyDoc = D.docs.find(d => d.id === "d_key");
+  /* --- cipher: decode a shorthand code with its key --- */
+  function puzzleCipher(pKey) {
+    const def = D.puzzles[pKey];
+    const keyDoc = D.docs.find(d => d.id === CIPHER_KEYDOC[pKey]);
     const ov = openOverlay(`
       <div class="pz-head"><b>${def.title}</b><span>${def.hint}</span></div>
       <div class="cipher-slots" id="pz-slots"></div>
@@ -383,7 +429,7 @@ const PF_FILE = (() => {
             got[idx] = opt; idx++;
             AU.sfx.pin();
             drawSlots(); drawOpts();
-            if (idx >= def.code.length) { markSolved("cipher"); finishPuzzle("cipher"); }
+            if (idx >= def.code.length) { markSolved(pKey); finishPuzzle(pKey); }
           } else {
             b.classList.add("bad"); AU.sfx.bad();
             setTimeout(() => b.classList.remove("bad"), 400);
@@ -396,8 +442,8 @@ const PF_FILE = (() => {
   }
 
   /* --- timeline: tap the records earliest-first --- */
-  function puzzleTimeline() {
-    const def = D.puzzles.timeline;
+  function puzzleTimeline(pKey) {
+    const def = D.puzzles[pKey];
     const items = shuffle(def.items);
     const ov = openOverlay(`
       <div class="pz-head"><b>${def.title}</b><span>${def.hint}</span></div>
@@ -415,7 +461,7 @@ const PF_FILE = (() => {
           el.querySelector(".tl-n").textContent = String(expected + 1);
           expected++;
           AU.sfx.pin();
-          if (expected === def.items.length) { markSolved("timeline"); finishPuzzle("timeline"); }
+          if (expected === def.items.length) { markSolved(pKey); finishPuzzle(pKey); }
         } else {
           el.classList.add("bad"); AU.sfx.bad();
           setTimeout(() => el.classList.remove("bad"), 400);
@@ -425,5 +471,122 @@ const PF_FILE = (() => {
     });
   }
 
-  return { render, openDoc, openPuzzle, setStamp, closeOverlay };
+  /* =================================================================
+     WORLD PUZZLES — physical locks, opened where they stand.
+     openWorldPuzzle(kind, onSolved) is called from world mode.
+     ================================================================= */
+  function openWorldPuzzle(kind, onSolved) {
+    if (PF.S.solved[kind]) { onSolved && onSolved(); return; }
+    if (kind === "vault") return puzzleVault(onSolved);
+    if (kind === "phone") return puzzlePhone(onSolved);
+  }
+  function markWorldSolved(kind) {
+    PF.S.solved[kind] = true;
+    PF.save();
+    AU.sfx.good();
+    PF.toast(D.puzzles[kind].toast);
+  }
+
+  /* --- the locker dial: three numbers, left to right --- */
+  function puzzleVault(onSolved) {
+    const def = D.puzzles.vault;
+    const ov = openOverlay(`
+      <div class="pz-head"><b>${def.title}</b><span>${def.hint}</span></div>
+      <div class="vault">
+        <div class="vault-slots" id="v-slots"></div>
+        <div class="vault-dial">
+          <button class="dial-btn" id="v-dn">◀</button>
+          <div class="dial-num" id="v-num">0</div>
+          <button class="dial-btn" id="v-up">▶</button>
+        </div>
+        <button class="action-btn" id="v-set" style="min-width:170px">SET</button>
+      </div>`,
+      `<button class="close-btn" data-close>STEP AWAY</button>`);
+    let cur = 0, at = 0;
+    const got = [];
+    const slots = ov.querySelector("#v-slots");
+    const num = ov.querySelector("#v-num");
+
+    function drawSlots() {
+      slots.innerHTML = def.combo.map((c, i) =>
+        `<div class="cipher-slot ${i < at ? "done" : i === at ? "cur" : ""}">
+          ${i < at ? got[i] : (def.comboLabels[i] || "?")}</div>`).join("");
+    }
+    function drawNum() { num.textContent = String(cur); }
+    ov.querySelector("#v-up").addEventListener("click", () => { cur = (cur + 1) % (def.max + 1); AU.sfx.tick(); drawNum(); });
+    ov.querySelector("#v-dn").addEventListener("click", () => { cur = (cur - 1 + def.max + 1) % (def.max + 1); AU.sfx.tick(); drawNum(); });
+    ov.querySelector("#v-set").addEventListener("click", () => {
+      if (cur === def.combo[at]) {
+        got[at] = cur; at++;
+        AU.sfx.pin();
+        drawSlots();
+        if (at >= def.combo.length) {
+          AU.sfx.clunk();
+          markWorldSolved("vault");
+          setTimeout(() => {
+            PF.narrate(def.solvedNarration, () => {
+              $("#overlay").classList.add("hidden"); $("#overlay").innerHTML = "";
+              onSolved && onSolved();
+            });
+          }, 500);
+        }
+      } else {
+        AU.sfx.bad();
+        at = 0; got.length = 0;
+        drawSlots();
+        PF.toast("The dial resets. Left to right, all three.");
+      }
+    });
+    drawSlots(); drawNum();
+  }
+
+  /* --- the rotary phone: dial the house line --- */
+  function puzzlePhone(onSolved) {
+    const def = D.puzzles.phone;
+    const digitsHTML = ["1","2","3","4","5","6","7","8","9","0"].map(d =>
+      `<button class="rotary-digit" data-d="${d}">${d}</button>`).join("");
+    const ov = openOverlay(`
+      <div class="pz-head"><b>${def.title}</b><span>${def.hint}</span></div>
+      <div class="rotary">
+        <div class="rotary-num" id="r-num">— — — —</div>
+        <div class="rotary-wheel" id="r-wheel">${digitsHTML}<div class="rotary-hub"></div></div>
+      </div>`,
+      `<button class="close-btn" data-close>HANG UP</button>`);
+    let at = 0;
+    const numEl = ov.querySelector("#r-num");
+    const wheel = ov.querySelector("#r-wheel");
+
+    function drawNum() {
+      numEl.textContent = def.number.map((d, i) => i < at ? d : "—").join(" ");
+    }
+    ov.querySelectorAll(".rotary-digit").forEach(b => {
+      b.addEventListener("click", () => {
+        const d = b.getAttribute("data-d");
+        if (d === def.number[at]) {
+          at++;
+          AU.sfx.dialA();
+          wheel.classList.remove("spin"); void wheel.offsetWidth; wheel.classList.add("spin");
+          AU.sfx.dialB(3 + (+d || 10));
+          drawNum();
+          if (at >= def.number.length) {
+            setTimeout(() => {
+              AU.sfx.ring1();
+              markWorldSolved("phone");
+              setTimeout(() => {
+                $("#overlay").classList.add("hidden"); $("#overlay").innerHTML = "";
+                onSolved && onSolved();
+              }, 900);
+            }, 700);
+          }
+        } else {
+          AU.sfx.bad();
+          at = 0; drawNum();
+          PF.toast("A tired dial tone. Start over — 0114.");
+        }
+      });
+    });
+    drawNum();
+  }
+
+  return { render, openDoc, openPuzzle, openWorldPuzzle, setStamp, closeOverlay };
 })();

@@ -1,5 +1,6 @@
-/* THE PEYTON FILES — procedural SVG art.
-   Flat, silhouette-driven noir. Warm light sources are the only saturated color. */
+/* THE PEYTON FILES — art layer.
+   Painted Higgsfield backdrops with hand-drawn silhouette actors on top.
+   Warm light is still the only saturated color; the paintings agree. */
 "use strict";
 
 const PF_ART = (() => {
@@ -16,10 +17,17 @@ const PF_ART = (() => {
     @keyframes pfFidget{0%,100%{transform:rotate(0deg)}30%{transform:rotate(1.6deg) translateY(-1px)}60%{transform:rotate(-1.2deg)}}
     .sway1{transform-box:fill-box;transform-origin:50% 95%;animation:pfSway 3.4s ease-in-out infinite;}
     .sway2{transform-box:fill-box;transform-origin:50% 95%;animation:pfSway 3.4s ease-in-out infinite reverse;}
-    @keyframes pfSway{0%,100%{transform:rotate(.8deg)}50%{transform:rotate(-.8deg)}}
+    .breathe{transform-box:fill-box;transform-origin:50% 100%;animation:pfBreathe 4.2s ease-in-out infinite;}
+    @keyframes pfBreathe{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.012)}}
     .neon-flick{animation:pfNeon 4.5s infinite;}
     @keyframes pfNeon{0%,86%,90%,100%{opacity:1}87%,89%{opacity:.45}}
+    .neon-flick2{animation:pfNeon2 7s infinite;}
+    @keyframes pfNeon2{0%,71%,75%,79%,100%{opacity:1}72%,74%,76%,78%{opacity:.3}}
     .glow-warm{filter:url(#pfGlow);}
+    .lamp-breathe{animation:pfLamp 6s ease-in-out infinite;}
+    @keyframes pfLamp{0%,100%{opacity:.85}50%{opacity:1}}
+    .flor-buzz{animation:pfFlor 9s infinite;}
+    @keyframes pfFlor{0%,53%,57%,100%{opacity:.5}54%,56%{opacity:.14}}
   `;
   document.head.appendChild(style);
 
@@ -42,13 +50,116 @@ const PF_ART = (() => {
       <stop offset="0" stop-color="#9aa4b8" stop-opacity="0"/>
       <stop offset="1" stop-color="#9aa4b8" stop-opacity=".16"/>
     </linearGradient>
+    <radialGradient id="warmPool" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="${WARM}" stop-opacity=".32"/>
+      <stop offset="1" stop-color="${WARM}" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="coldPool" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#b8e0d8" stop-opacity=".25"/>
+      <stop offset="1" stop-color="#b8e0d8" stop-opacity="0"/>
+    </radialGradient>
   </defs>`;
+
+  /* =================================================================
+     PAINTED BACKDROPS
+     All world paintings are 2560x1080 → 1707 wide at the 720 stage.
+     Overlay positions live here so they can be tuned in one place.
+     ================================================================= */
+  const ART_W = 1707;
+  const IMG = {
+    bg_storage: "art/bg_storage.webp",
+    bg_diner: "art/bg_diner.webp",
+    bg_motel: "art/bg_motel.webp",
+    bg_annex: "art/bg_annex.webp",
+    bg_terminal: "art/bg_terminal.webp",
+    bg_gas: "art/bg_gas.webp",
+    bg_lakehouse: "art/bg_lakehouse.webp",
+    cut_lakecity: "art/cut_lakecity.webp",
+    cut_road: "art/cut_road.webp",
+    cut_lakehouse: "art/cut_lakehouse.webp",
+    prop_unit14: "art/prop_unit14.webp",
+    prop_odom: "art/prop_odom.webp",
+    title: "art/title.webp",
+  };
+
+  /* Scene overlays: signage, glows, and the haunt elements (ids hx-*).
+     Positions tuned against the paintings (1707x720 stage space). */
+  const OVERLAYS = {
+    storage: (W) => `
+      <text x="850" y="180" text-anchor="middle" font-family="Arial Black,Arial" font-size="24"
+        letter-spacing="8" fill="#7f8798" opacity=".5">MILLHAVEN SELF-STORAGE</text>
+      <text x="713" y="264" text-anchor="middle" font-family="Arial Black,Arial" font-size="15" fill="#7f8798" opacity=".65">13</text>
+      <text x="947" y="252" text-anchor="middle" font-family="Arial Black,Arial" font-size="16" fill="#d8b98a" opacity=".8">14</text>
+      <text x="1187" y="264" text-anchor="middle" font-family="Arial Black,Arial" font-size="15" fill="#7f8798" opacity=".65">15</text>
+      <ellipse id="hx-door" cx="947" cy="555" rx="165" ry="75" fill="url(#warmPool)" class="lamp-breathe"/>
+      <rect x="0" y="430" width="${W}" height="290" fill="url(#fogG)"/>`,
+    diner: (W) => `
+      <g class="neon-flick" transform="rotate(-3 452 226)">
+        <text x="452" y="212" text-anchor="middle" font-family="Georgia,serif" font-size="29" fill="#ff8d5c" class="glow-warm">THE COPPER</text>
+        <text x="452" y="250" text-anchor="middle" font-family="Georgia,serif" font-size="31" fill="#c2543f" class="glow-warm">SPOON</text>
+      </g>
+      <ellipse id="hx-juke" cx="307" cy="445" rx="85" ry="60" fill="url(#warmPool)" opacity="0"/>
+      <rect x="1620" y="360" width="42" height="27" rx="2" fill="#efe6cd" opacity=".78"/>
+      <text x="1641" y="381" text-anchor="middle" font-family="Arial Black,Arial" font-size="18" fill="#2a251d" opacity=".9">6</text>`,
+    motel: (W) => `
+      <g class="neon-flick2">
+        <text x="627" y="242" text-anchor="middle" font-family="Georgia,serif" font-size="24" letter-spacing="6"
+          fill="#e05c5c" class="glow-warm" opacity=".7" transform="rotate(-2 627 242)">VACANCY</text>
+      </g>
+      <ellipse id="hx-bath" cx="1290" cy="430" rx="125" ry="145" fill="url(#coldPool)" class="flor-buzz" style="opacity:.5"/>
+      <text x="1385" y="302" text-anchor="middle" font-family="Georgia,serif" font-size="22" fill="#c9b895" opacity=".5">6</text>`,
+    annex: (W) => `
+      <rect id="hx-flor" x="70" y="40" width="430" height="170" fill="#cfe8e0" opacity=".07" class="flor-buzz"/>
+      <ellipse cx="95" cy="505" rx="95" ry="55" fill="url(#coldPool)" opacity=".8"/>`,
+    terminal: (W) => `
+      <g opacity=".8" stroke="#cfd8ea" stroke-width="2" stroke-linecap="round">
+        <line x1="388" y1="142" x2="387" y2="127"/>
+        <line x1="388" y1="142" x2="378" y2="132"/>
+      </g>
+      <rect x="1568" y="340" width="46" height="24" rx="2" fill="#20242e" opacity=".8"/>
+      <text x="1591" y="358" text-anchor="middle" font-family="Arial Black,Arial" font-size="15" fill="#c9b895" opacity=".9">44</text>
+      <ellipse cx="303" cy="385" rx="85" ry="60" fill="url(#warmPool)" opacity=".8"/>
+      <g id="hx-board" opacity="0">
+        <rect x="730" y="205" width="360" height="56" fill="#0a0c10" opacity=".9"/>
+        <text x="910" y="243" text-anchor="middle" font-family="Courier New,monospace" font-size="26"
+          letter-spacing="5" fill="#e8c987">MILLHAVEN&nbsp;&nbsp;11:52</text>
+      </g>`,
+    gas: (W) => `
+      <g class="neon-flick">
+        <text x="840" y="270" text-anchor="middle" font-family="Arial Black,Arial" font-size="21"
+          letter-spacing="3" fill="${WARM}" class="glow-warm" opacity=".85" transform="rotate(-1 840 270)">ROUTE 9 FUEL</text>
+      </g>
+      <g id="hx-pump" opacity="0">
+        <rect x="1210" y="383" width="92" height="28" fill="#0a0c10" opacity=".9"/>
+        <text id="hx-pump-n" x="1256" y="404" text-anchor="middle" font-family="Courier New,monospace" font-size="19" fill="#ffd9a0">18.2</text>
+      </g>
+      <ellipse cx="1640" cy="430" rx="80" ry="120" fill="url(#coldPool)" opacity=".5"/>
+      <rect x="0" y="430" width="${W}" height="290" fill="url(#fogG)"/>`,
+    lakehouse: (W) => `
+      <rect x="640" y="398" width="58" height="12" rx="1.5" fill="#6e5a2e" opacity=".45"/>
+      <ellipse id="hx-lamp" cx="1254" cy="420" rx="150" ry="115" fill="url(#warmPool)" class="lamp-breathe"/>`,
+  };
+
+  /* Build a painted world scene: image + graded floor strip + overlays. */
+  function sceneArt(id, def) {
+    const W = ART_W;
+    const ov = OVERLAYS[id] ? OVERLAYS[id](W) : "";
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} 720" preserveAspectRatio="xMidYMax meet">${DEFS}
+      <image href="${IMG[def.art]}" x="0" y="0" width="${W}" height="720" preserveAspectRatio="xMidYMid slice"/>
+      <rect x="0" y="0" width="${W}" height="720" fill="#0b0e14" opacity=".14"/>
+      <linearGradient id="floorFade" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#06070a" stop-opacity="0"/><stop offset="1" stop-color="#06070a" stop-opacity=".55"/>
+      </linearGradient>
+      <rect x="0" y="${(def.ground || 640) - 30}" width="${W}" height="${720 - (def.ground || 640) + 30}" fill="url(#floorFade)"/>
+      ${ov}`.trim() + `</svg>`;
+  }
 
   /* ---------- characters ---------- */
 
   // Kessler: upright trench coat, hands in pockets. Local box 120x190, feet at y=190.
   function kesslerSVG() {
-    return `<g class="walk-bob">
+    return `<ellipse cx="60" cy="186" rx="34" ry="7" fill="#000" opacity=".4"/>
+    <g class="walk-bob">
       <circle cx="60" cy="26" r="15" fill="${SIL}"/>
       <path d="M46,20 Q60,4 76,22 L74,34 Q60,26 48,32 Z" fill="${SIL}"/>
       <rect x="55" y="38" width="10" height="10" fill="${SIL}"/>
@@ -62,7 +173,8 @@ const PF_ART = (() => {
 
   // Gerald: hunched, clutching a cardboard box. 140x170, feet at 170.
   function geraldSVG() {
-    return `<g class="fidget">
+    return `<ellipse cx="72" cy="167" rx="40" ry="7" fill="#000" opacity=".4"/>
+    <g class="fidget">
       <path d="M40,70 Q38,30 72,26 Q100,24 104,52 L108,120 Q110,150 92,152 L52,152 Q34,148 36,116 Z" fill="${SIL}"/>
       <circle cx="96" cy="34" r="14" fill="${SIL}"/>
       <path d="M84,26 Q96,14 110,28 L106,38 Q96,30 86,34 Z" fill="${SIL}"/>
@@ -77,7 +189,8 @@ const PF_ART = (() => {
 
   // Denise: perfectly still, coffee pot at her side. 120x180, feet at 180.
   function deniseSVG() {
-    return `<g>
+    return `<ellipse cx="60" cy="176" rx="34" ry="7" fill="#000" opacity=".4"/>
+    <g>
       <circle cx="60" cy="22" r="14" fill="${SIL}"/>
       <circle cx="60" cy="8" r="8" fill="${SIL}"/>
       <rect x="55" y="34" width="10" height="8" fill="${SIL}"/>
@@ -105,7 +218,8 @@ const PF_ART = (() => {
       <rect x="65" y="140" width="13" height="30" fill="${SIL}"/>
       <rect x="38" y="168" width="19" height="8" rx="2" fill="${SIL}"/>
       <rect x="63" y="168" width="19" height="8" rx="2" fill="${SIL}"/>`;
-    return `<g class="sway1">${bro(true)}
+    return `<ellipse cx="120" cy="181" rx="86" ry="8" fill="#000" opacity=".4"/>
+      <g class="sway1">${bro(true)}
         <rect x="92" y="30" width="5" height="140" fill="#4a4030"/>
         <path d="M84,168 L110,168 L106,180 L88,180 Z" fill="#8d94a3"/>
       </g>
@@ -114,10 +228,104 @@ const PF_ART = (() => {
       </g>`;
   }
 
-  const NPC_ART = { npc_gerald: geraldSVG, npc_denise: deniseSVG, npc_whitlocks: whitlocksSVG };
-  const NPC_SIZE = { npc_gerald: [140,170], npc_denise: [120,180], npc_whitlocks: [240,185] };
+  // Sgt. Reyes: squared shoulders, cardigan over uniform, clipboard held like scripture. 120x180.
+  function reyesSVG() {
+    return `<ellipse cx="60" cy="176" rx="34" ry="7" fill="#000" opacity=".4"/>
+    <g class="breathe">
+      <circle cx="60" cy="22" r="14" fill="${SIL}"/>
+      <path d="M47,14 Q60,2 73,14 L73,26 Q60,20 47,26 Z" fill="${SIL}"/>
+      <circle cx="60" cy="7" r="6" fill="${SIL}"/>
+      <rect x="55" y="34" width="10" height="8" fill="${SIL}"/>
+      <path d="M42,42 L78,42 L86,70 L84,144 L36,144 L34,70 Z" fill="${SIL}"/>
+      <path d="M42,42 L50,54 L60,44 L70,54 L78,42 L60,40 Z" fill="#1b202b"/>
+      <rect x="44" y="88" width="34" height="24" rx="2" fill="#8d8060"/>
+      <rect x="48" y="92" width="26" height="3" fill="#3b3327"/>
+      <rect x="48" y="99" width="20" height="3" fill="#3b3327"/>
+      <rect x="47" y="142" width="10" height="28" fill="${SIL}"/>
+      <rect x="63" y="142" width="10" height="28" fill="${SIL}"/>
+      <rect x="43" y="168" width="17" height="7" rx="2" fill="${SIL}"/>
+      <rect x="61" y="168" width="17" height="7" rx="2" fill="${SIL}"/>
+    </g>`;
+  }
 
-  /* ---------- shared scene bits ---------- */
+  // Wes: lanky, leaning, visor cap, headphones around the neck. 110x185.
+  function wesSVG() {
+    return `<ellipse cx="55" cy="181" rx="30" ry="7" fill="#000" opacity=".4"/>
+    <g class="fidget">
+      <circle cx="58" cy="24" r="13" fill="${SIL}"/>
+      <path d="M45,20 L74,20 L80,14 L48,10 Z" fill="${SIL}"/>
+      <path d="M46,36 Q58,46 70,36 L70,44 Q58,52 46,44 Z" fill="#2b3140"/>
+      <rect x="53" y="34" width="9" height="9" fill="${SIL}"/>
+      <path d="M45,43 L70,43 L74,60 L72,130 L44,130 L40,60 Z" fill="${SIL}"/>
+      <path d="M48,72 L68,72 L67,126 L47,126 Z" fill="#232837"/>
+      <rect x="46" y="128" width="9" height="42" fill="${SIL}"/>
+      <rect x="60" y="128" width="9" height="42" fill="${SIL}"/>
+      <rect x="42" y="168" width="16" height="7" rx="2" fill="${SIL}"/>
+      <rect x="58" y="168" width="16" height="7" rx="2" fill="${SIL}"/>
+    </g>`;
+  }
+
+  // Merle: stocky, cap, squeegee held like a halberd. 130x175.
+  function merleSVG() {
+    return `<ellipse cx="65" cy="171" rx="40" ry="7" fill="#000" opacity=".4"/>
+    <g class="sway1">
+      <circle cx="62" cy="28" r="15" fill="${SIL}"/>
+      <path d="M46,24 L78,24 L78,16 Q62,6 48,18 Z" fill="${SIL}"/>
+      <rect x="72" y="22" width="15" height="5" rx="2" fill="${SIL}"/>
+      <rect x="56" y="42" width="12" height="8" fill="${SIL}"/>
+      <path d="M40,50 L84,50 L92,76 L90,138 L34,138 L32,76 Z" fill="${SIL}"/>
+      <path d="M52,50 L72,50 L72,136 L52,136 Z" fill="#20252f"/>
+      <rect x="44" y="136" width="13" height="28" fill="${SIL}"/>
+      <rect x="67" y="136" width="13" height="28" fill="${SIL}"/>
+      <rect x="40" y="162" width="19" height="8" rx="2" fill="${SIL}"/>
+      <rect x="65" y="162" width="19" height="8" rx="2" fill="${SIL}"/>
+      <rect x="98" y="34" width="5" height="132" fill="#4a4030"/>
+      <rect x="88" y="28" width="25" height="7" rx="2" fill="#8d94a3"/>
+    </g>`;
+  }
+
+  // Mrs. Abernathy: bell-silhouette dress, bun, oil lamp at her side. The stillest thing alive. 110x175.
+  function abernathySVG() {
+    return `<ellipse cx="55" cy="171" rx="34" ry="7" fill="#000" opacity=".4"/>
+    <g>
+      <circle cx="55" cy="20" r="12" fill="${SIL}"/>
+      <circle cx="55" cy="7" r="6" fill="${SIL}"/>
+      <rect x="50" y="30" width="10" height="8" fill="${SIL}"/>
+      <path d="M44,36 L66,36 L72,64 L82,166 L28,166 L38,64 Z" fill="${SIL}"/>
+      <path d="M49,44 L61,44 L61,58 L49,58 Z" fill="#1a1e28"/>
+      <circle cx="55" cy="47" r="3.4" fill="#c9b895"/>
+      <rect x="76" y="82" width="6" height="34" fill="${SIL}"/>
+      <g class="lamp-breathe">
+        <path d="M74,116 L90,116 L87,140 L77,140 Z" fill="#2a2f3a" stroke="${SIL}" stroke-width="2.5"/>
+        <ellipse cx="82" cy="128" rx="6" ry="9" fill="${WARM}" class="glow-warm"/>
+      </g>
+    </g>`;
+  }
+
+  const NPC_ART = {
+    npc_gerald: geraldSVG, npc_denise: deniseSVG, npc_whitlocks: whitlocksSVG,
+    npc_reyes: reyesSVG, npc_wes: wesSVG, npc_merle: merleSVG, npc_abernathy: abernathySVG,
+  };
+  const NPC_SIZE = {
+    npc_gerald: [140,170], npc_denise: [120,180], npc_whitlocks: [240,185],
+    npc_reyes: [120,180], npc_wes: [110,185], npc_merle: [130,175], npc_abernathy: [110,175],
+  };
+
+  /* ---------- dialogue portraits (case-file photographs) ---------- */
+  const PORTRAITS = {
+    "KESSLER": "art/pt_kessler.webp",
+    "GERALD": "art/pt_gerald.webp",
+    "DENISE": "art/pt_denise.webp",
+    "ROY": "art/pt_whitlocks.webp",
+    "DALE": "art/pt_whitlocks.webp",
+    "ROY & DALE": "art/pt_whitlocks.webp",
+    "REYES": "art/pt_reyes.webp",
+    "WES": "art/pt_wes.webp",
+    "MERLE": "art/pt_merle.webp",
+    "ABERNATHY": "art/pt_abernathy.webp",
+  };
+
+  /* ---------- shared scene bits (procedural fallback) ---------- */
 
   const ground = (w, c1="#1e222a", c2="#171a20") =>
     `<rect x="0" y="640" width="${w}" height="80" fill="${c1}"/>
@@ -132,261 +340,56 @@ const PF_ART = (() => {
 
   const fog = (w) => `<rect x="0" y="430" width="${w}" height="290" fill="url(#fogG)"/>`;
 
-  /* ---------- SCENE: storage facility (dusk) ---------- */
-  function sceneStorage() {
-    const W = 2000;
-    let units = "";
-    // one long building, roll-door units. Unit 14's door is ajar.
-    const numbers = [11,12,13,14,15,16,17];
-    for (let i = 0; i < numbers.length; i++) {
-      const n = numbers[i], x = 420 + i*190;
-      const ajar = n === 14;
-      let door = "";
-      if (ajar) {
-        door = `<rect x="${x+10}" y="452" width="150" height="188" fill="#08090c"/>
-          <rect x="${x+10}" y="452" width="150" height="188" fill="${WARM}" opacity=".07"/>
-          <rect x="${x+10}" y="452" width="150" height="42" fill="#3a4150"/>
-          <line x1="${x+10}" y1="466" x2="${x+160}" y2="466" stroke="#2f3542" stroke-width="3"/>
-          <line x1="${x+10}" y1="480" x2="${x+160}" y2="480" stroke="#2f3542" stroke-width="3"/>`;
-      } else {
-        door = `<rect x="${x+10}" y="452" width="150" height="188" fill="#39404f"/>` +
-          Array.from({length:9},(_,k)=>`<line x1="${x+10}" y1="${472+k*19}" x2="${x+160}" y2="${472+k*19}" stroke="#30364a" stroke-width="3"/>`).join("") +
-          `<rect x="${x+72}" y="612" width="26" height="10" rx="2" fill="#262b38"/>`;
-      }
-      units += `<g>${door}
-        <rect x="${x}" y="430" width="170" height="22" fill="#262b36"/>
-        <text x="${x+85}" y="447" text-anchor="middle" font-family="Arial Black,Arial" font-size="15" fill="#8d94a3">${n}</text></g>`;
-    }
-    // boxes spilling near unit 15 front (Gerald's paperwork)
-    const box = (x,y,w,h,c)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="${c}"/><line x1="${x}" y1="${y+h/2}" x2="${x+w}" y2="${y+h/2}" stroke="#4d3f2c" stroke-width="2"/>`;
+  /* Minimal procedural fallbacks (used only if a painting is missing). */
+  function fallbackScene(W, label) {
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} 720" preserveAspectRatio="xMidYMax meet">${DEFS}
-      <rect width="${W}" height="720" fill="url(#skyDusk)"/>
-      <rect x="0" y="560" width="${W}" height="80" fill="#171b24"/>
-      <path d="M0,568 L120,540 L260,566 L420,548 L560,568 L${W},560 L${W},640 L0,640 Z" fill="#12151d"/>
-      <rect x="380" y="360" width="1400" height="280" fill="#2c313c"/>
-      <rect x="380" y="348" width="1400" height="18" fill="#20242e"/>
-      <text x="1080" y="336" text-anchor="middle" font-family="Arial Black,Arial" font-size="34" letter-spacing="10" fill="#5b6270">MILLHAVEN SELF-STORAGE</text>
-      ${units}
-      <rect x="96" y="430" width="10" height="210" fill="#20242e"/>
-      <rect x="80" y="470" width="44" height="60" rx="4" fill="#262b36"/>
-      <circle cx="102" cy="488" r="4" fill="${WARM}" opacity=".8"/>
-      ${Array.from({length:9},(_,k)=>`<line x1="130" y1="${440+k*22}" x2="360" y2="${440+k*22}" stroke="#242936" stroke-width="2"/>`).join("")}
-      ${Array.from({length:8},(_,k)=>`<line x1="${140+k*28}" y1="436" x2="${140+k*28}" y2="638" stroke="#242936" stroke-width="2"/>`).join("")}
-      <rect x="1840" y="380" width="12" height="260" fill="#20242e"/>
-      <rect x="1832" y="368" width="60" height="14" rx="4" fill="#20242e"/>
-      <circle cx="1880" cy="382" r="7" fill="${WARM}" class="glow-warm"/>
-      ${lampCone(1880, 386, 640, 130, .08)}
-      ${box(1400,560,70,50,"#6d573c")}${box(1478,548,80,62,"#7a6244")}${box(1420,510,74,48,"#63503a")}${box(1500,498,60,48,"#6d573c")}
-      ${ground(W)}
-      ${puddle(700,90)}${puddle(1250,120)}${puddle(1830,80,WARM,.16)}
-      ${fog(W)}
+      <rect width="${W}" height="720" fill="url(#skyNight)"/>
+      <text x="${W/2}" y="330" text-anchor="middle" font-family="Arial Black,Arial" font-size="30" letter-spacing="8" fill="#39404f">${label}</text>
+      ${ground(W)}${fog(W)}
     </svg>`;
   }
-
-  /* ---------- SCENE: The Copper Spoon (interior, morning) ---------- */
-  function sceneDiner() {
-    const W = 1800;
-    const stool = (x)=>`<rect x="${x}" y="540" width="10" height="100" fill="#232834"/><ellipse cx="${x+5}" cy="538" rx="26" ry="10" fill="#513c2a"/>`;
-    const lamp = (x)=>`<rect x="${x-2}" y="120" width="4" height="90" fill="#12151c"/>
-      <path d="M${x-26},210 L${x+26},210 L${x+14},178 L${x-14},178 Z" fill="#1c212c"/>
-      <ellipse cx="${x}" cy="212" rx="20" ry="6" fill="${WARM}" class="glow-warm" opacity=".9"/>
-      ${lampCone(x, 214, 560, 110, .07)}`;
-    const boothWin = (x)=>`<rect x="${x}" y="200" width="200" height="220" rx="4" fill="#10141d"/>
-      ${Array.from({length:6},(_,k)=>`<line x1="${x+18+k*32}" y1="206" x2="${x+8+k*32}" y2="414" stroke="#26304a" stroke-width="2"/>`).join("")}`;
-    const booth = (x,n)=>`
-      <path d="M${x},640 L${x},470 Q${x},452 ${x+16},452 L${x+28},452 L${x+28},640 Z" fill="#4a2e28"/>
-      <path d="M${x+196},640 L${x+196},470 Q${x+196},452 ${x+180},452 L${x+168},452 L${x+168},640 Z" fill="#4a2e28"/>
-      <rect x="${x+52}" y="520" width="92" height="12" fill="#71513a"/>
-      <rect x="${x+90}" y="532" width="14" height="108" fill="#3a2c22"/>
-      <rect x="${x+60}" y="472" width="30" height="38" rx="3" fill="#efe6cd" opacity=".9"/>
-      <text x="${x+75}" y="498" text-anchor="middle" font-family="Arial Black,Arial" font-size="20" fill="#2a251d">${n}</text>`;
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} 720" preserveAspectRatio="xMidYMax meet">${DEFS}
-      <rect width="${W}" height="720" fill="#23272f"/>
-      <rect x="0" y="0" width="${W}" height="120" fill="#1c202a"/>
-      <rect x="0" y="612" width="${W}" height="108" fill="#20242c"/>
-      ${Array.from({length:23},(_,k)=>`<rect x="${k*80+(k%2?0:40)-40}" y="612" width="78" height="108" fill="${k%2?"#262a33":"#1d2129"}"/>`).join("")}
-      <rect x="0" y="604" width="${W}" height="10" fill="#12151c"/>
-      ${boothWin(60)}
-      <g class="neon-flick">
-        <text x="160" y="290" text-anchor="middle" font-family="Georgia,serif" font-size="34" fill="#ff8d5c" class="glow-warm" transform="scale(-1,1) translate(-320,0)">COPPER</text>
-        <text x="160" y="336" text-anchor="middle" font-family="Georgia,serif" font-size="34" fill="#c2543f" class="glow-warm" transform="scale(-1,1) translate(-320,0)">SPOON</text>
-      </g>
-      <rect x="300" y="440" width="90" height="180" rx="6" fill="#3a2f3f"/>
-      <rect x="312" y="456" width="66" height="44" rx="22" fill="#191420"/>
-      <rect x="318" y="510" width="54" height="70" fill="#241c30"/>
-      <text x="345" y="606" text-anchor="middle" font-family="Arial" font-size="11" fill="#6b5f78">OUT OF ORDER</text>
-      ${lamp(700)}${lamp(950)}${lamp(1200)}
-      <rect x="560" y="250" width="700" height="150" fill="#1c202a"/>
-      <rect x="580" y="270" width="180" height="110" fill="#262b36"/>
-      <rect x="600" y="286" width="60" height="80" rx="4" fill="#3a4150"/>
-      <rect x="700" y="300" width="26" height="50" fill="#2f3542"/>
-      <ellipse cx="713" cy="298" rx="16" ry="5" fill="#12151c"/>
-      <text x="910" y="320" font-family="Arial" font-size="18" letter-spacing="3" fill="#5b6270">TODAY: PIE</text>
-      <text x="910" y="348" font-family="Arial" font-size="13" letter-spacing="2" fill="#454c5c">EVERYTHING ELSE: ASK</text>
-      <rect x="560" y="430" width="700" height="24" fill="#4a5262"/>
-      <rect x="570" y="454" width="680" height="150" fill="#343a46"/>
-      <rect x="570" y="454" width="680" height="10" fill="#2a2f3a"/>
-      <rect x="790" y="404" width="4" height="28" fill="#8d94a3"/>
-      <ellipse cx="792" cy="432" rx="16" ry="4" fill="#262b36"/>
-      <rect x="782" y="408" width="22" height="18" fill="#efe6cd" opacity=".85" transform="rotate(-6 793 417)"/>
-      <rect x="1000" y="330" width="120" height="100" fill="#20242e"/>
-      <rect x="1008" y="338" width="104" height="84" fill="#0f1218"/>
-      <ellipse cx="1035" cy="392" rx="20" ry="9" fill="#8a4a2e"/>
-      <ellipse cx="1080" cy="392" rx="20" ry="9" fill="#a3763c"/>
-      <ellipse cx="1058" cy="366" rx="20" ry="9" fill="#7a5c34"/>
-      <text x="1060" y="446" text-anchor="middle" font-family="Arial" font-size="12" letter-spacing="2" fill="#6b7280">PIE</text>
-      ${stool(620)}${stool(730)}${stool(840)}${stool(1080)}${stool(1190)}
-      <g transform="translate(1160,388) scale(.86)">
-        <circle cx="60" cy="30" r="15" fill="${SIL}"/>
-        <path d="M42,48 L78,48 L86,80 L82,150 L38,150 L34,80 Z" fill="${SIL}"/>
-        <rect x="40" y="148" width="40" height="60" fill="${SIL}"/>
-      </g>
-      ${booth(1470,6)}
-      ${ground(W,"#20242c","#12151c")}
-    </svg>`;
-  }
-
-  /* ---------- SCENE: Presidio Motor Lodge, room 6 (interior) ---------- */
-  function sceneMotel() {
-    const W = 1700;
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} 720" preserveAspectRatio="xMidYMax meet">${DEFS}
-      <rect width="${W}" height="720" fill="#262a33"/>
-      ${Array.from({length:28},(_,k)=>`<rect x="${k*64}" y="120" width="30" height="500" fill="#2a2e38" opacity=".5"/>`).join("")}
-      <rect x="0" y="0" width="${W}" height="120" fill="#20242c"/>
-      <rect x="0" y="596" width="${W}" height="124" fill="#2c2e33"/>
-      <rect x="0" y="590" width="${W}" height="8" fill="#191b20"/>
-      <g>
-        <rect x="60" y="220" width="180" height="420" fill="#0e1119"/>
-        <rect x="60" y="220" width="180" height="420" fill="url(#skyNight)" opacity=".7"/>
-        <rect x="96" y="420" width="110" height="12" fill="#12151c"/>
-        <text x="150" y="404" text-anchor="middle" font-family="Georgia,serif" font-size="22" fill="${WARM}" class="glow-warm neon-flick">PRESIDIO</text>
-        <text x="150" y="430" text-anchor="middle" font-family="Georgia,serif" font-size="11" fill="#c98b45">MOTOR LODGE — VACANCY</text>
-        ${Array.from({length:5},(_,k)=>`<line x1="${84+k*34}" y1="226" x2="${72+k*34}" y2="634" stroke="#26304a" stroke-width="2"/>`).join("")}
-        <rect x="52" y="204" width="196" height="16" fill="#1b1e26"/>
-        <rect x="52" y="640" width="196" height="10" fill="#1b1e26"/>
-      </g>
-      <g>
-        <rect x="330" y="180" width="20" height="460" fill="#1b1e26"/>
-        <rect x="350" y="196" width="150" height="444" fill="#10131a"/>
-        <rect x="350" y="196" width="150" height="444" fill="${WARM}" opacity=".05"/>
-        <rect x="352" y="200" width="26" height="440" fill="#332c26"/>
-        <circle cx="372" cy="430" r="6" fill="#8d94a3"/>
-        <rect x="404" y="330" width="52" height="70" rx="4" fill="#efe6cd" opacity=".82"/>
-        <text x="430" y="372" text-anchor="middle" font-family="Arial Black,Arial" font-size="34" fill="#2a251d">6</text>
-      </g>
-      <g>
-        <rect x="560" y="470" width="240" height="60" fill="#6a6f7c"/>
-        <rect x="560" y="530" width="240" height="70" fill="#3a3f4a"/>
-        <rect x="548" y="440" width="24" height="160" fill="#2c2620"/>
-        <rect x="788" y="440" width="24" height="160" fill="#2c2620"/>
-        <rect x="560" y="470" width="240" height="12" fill="#7c828f"/>
-        <path d="M600,492 L760,492 M580,510 L740,510" stroke="#575c68" stroke-width="4" fill="none"/>
-      </g>
-      <g>
-        <rect x="1130" y="490" width="110" height="110" fill="#3a332c"/>
-        <rect x="1130" y="490" width="110" height="14" fill="#4a4238"/>
-        <rect x="1176" y="540" width="40" height="10" fill="#2a251e"/>
-        <rect x="1146" y="418" width="10" height="72" fill="#191b20"/>
-        <path d="M1122,430 L1180,430 L1168,394 L1134,394 Z" fill="#1c212c"/>
-        <ellipse cx="1151" cy="432" rx="24" ry="7" fill="${WARM}" class="glow-warm" opacity=".95"/>
-        ${lampCone(1151, 436, 600, 120, .10)}
-        <rect x="1196" y="478" width="34" height="24" fill="#efe6cd" transform="rotate(-4 1213 490)"/>
-      </g>
-      <g>
-        <rect x="1450" y="190" width="160" height="450" fill="#171b23"/>
-        <rect x="1450" y="190" width="160" height="450" fill="#bcd0d8" opacity=".05"/>
-        <rect x="1444" y="176" width="172" height="16" fill="#1b1e26"/>
-        <rect x="1520" y="380" width="8" height="60" fill="#3a4150"/>
-        <rect x="1460" y="620" width="140" height="20" fill="#10131a"/>
-      </g>
-      <rect x="880" y="560" width="90" height="60" rx="4" fill="#171a21"/>
-      <rect x="990" y="574" width="70" height="46" rx="4" fill="#171a21"/>
-      <text x="850" y="160" font-family="Arial" font-size="15" letter-spacing="6" fill="#454c5c">ROOM 6</text>
-      ${ground(W,"#2c2e33","#191b20")}
-    </svg>`;
-  }
-
-  const SCENES = { storage: sceneStorage, diner: sceneDiner, motel: sceneMotel };
+  const SCENES = {
+    storage: () => fallbackScene(1707, "MILLHAVEN SELF-STORAGE"),
+    diner:   () => fallbackScene(1707, "THE COPPER SPOON"),
+    motel:   () => fallbackScene(1707, "PRESIDIO MOTOR LODGE"),
+    annex:   () => fallbackScene(1707, "RECORDS ANNEX"),
+    terminal:() => fallbackScene(1707, "UNION TERMINAL"),
+    gas:     () => fallbackScene(1707, "ROUTE 9 FUEL"),
+    lakehouse:() => fallbackScene(1707, "WHITMORE LAKE HOUSE"),
+  };
 
   /* ---------- surveillance photo (photo puzzle + reveal) ---------- */
   function photoSVG() {
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" preserveAspectRatio="none">
-      <defs><filter id="pfGrain"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" result="n"/>
-      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.55 0 0 0 .08 0"/>
-      <feComposite operator="over" in2="SourceGraphic"/></filter></defs>
-      <g filter="url(#pfGrain)">
-      <rect width="600" height="600" fill="#39404d"/>
-      <rect y="0" width="600" height="150" fill="#2c313d"/>
-      <rect x="30" y="150" width="540" height="330" fill="#232833"/>
-      <rect x="30" y="140" width="540" height="16" fill="#1b1f28"/>
-      <rect x="90" y="200" width="180" height="270" fill="#2f3644"/>
-      ${Array.from({length:9},(_,k)=>`<line x1="90" y1="${226+k*26}" x2="270" y2="${226+k*26}" stroke="#272d3a" stroke-width="4"/>`).join("")}
-      <rect x="330" y="200" width="180" height="270" fill="#12151d"/>
-      <rect x="330" y="200" width="180" height="30" fill="#2f3644"/>
-      <text x="420" y="300" text-anchor="middle" font-family="Arial Black,Arial" font-size="86" fill="#aab2c2" opacity=".92">14</text>
-      <rect x="322" y="188" width="196" height="10" fill="#1b1f28"/>
-      <path d="M508,470 L560,470 L560,200 L540,200 L540,450 L508,450 Z" fill="#1b1f28"/>
-      <rect y="470" width="600" height="130" fill="#1d212b"/>
-      <ellipse cx="300" cy="520" rx="140" ry="14" fill="#242c3c" opacity=".8"/>
-      <text x="24" y="46" font-family="Courier New" font-size="24" fill="#c8cbd4" opacity=".85">CAM 02</text>
-      <text x="420" y="580" font-family="Courier New" font-size="24" fill="#c8cbd4" opacity=".85">03:12 AM</text>
-      <circle cx="420" cy="215" r="0" fill="none"/>
+      <image href="${IMG.prop_unit14}" x="0" y="0" width="600" height="600" preserveAspectRatio="xMidYMid slice"/>
+      <rect width="600" height="600" fill="#1a2030" opacity=".12"/>
+      <text x="24" y="46" font-family="Courier New" font-size="24" fill="#e6e9f0" opacity=".9">CAM 02</text>
+      <text x="408" y="580" font-family="Courier New" font-size="24" fill="#e6e9f0" opacity=".9">03:12 AM</text>
+      <text x="299" y="180" text-anchor="middle" font-family="Arial Black,Arial" font-size="42" fill="#dfe3ea" opacity=".8">14</text>
+      <ellipse cx="299" cy="268" rx="132" ry="158" fill="none" stroke="#c22b26" stroke-width="7" opacity=".9" stroke-dasharray="4 14" stroke-linecap="round"/>
+    </svg>`;
+  }
+
+  /* ---------- 1931 photograph (episode 3 photo puzzle) ---------- */
+  function photo1931SVG() {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" preserveAspectRatio="none">
+      <defs><filter id="pfSepia"><feColorMatrix type="matrix"
+        values="0.45 0.35 0.15 0 0.06  0.35 0.32 0.12 0 0.03  0.22 0.20 0.10 0 0.0  0 0 0 1 0"/></filter></defs>
+      <g filter="url(#pfSepia)">
+        <image href="${IMG.cut_lakehouse}" x="0" y="0" width="600" height="600" preserveAspectRatio="xMidYMid slice"/>
       </g>
-      <ellipse cx="420" cy="300" rx="120" ry="120" fill="none" stroke="#a3231f" stroke-width="7" opacity=".9" stroke-dasharray="4 14" stroke-linecap="round"/>
+      <rect width="600" height="600" fill="#3a2c14" opacity=".14"/>
+      <text x="466" y="578" font-family="Courier New" font-size="26" fill="#efe0c0" opacity=".8">1931</text>
+      <ellipse cx="359" cy="183" rx="72" ry="72" fill="none" stroke="#c22b26" stroke-width="6" opacity=".9" stroke-dasharray="4 13" stroke-linecap="round"/>
     </svg>`;
   }
 
   /* ---------- stinger photo (Odom in the doorway) ---------- */
   function stingerSVG() {
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice">
-      <rect width="600" height="400" fill="#3a4150"/>
-      <rect y="280" width="600" height="120" fill="#232833"/>
-      <rect x="40" y="60" width="240" height="230" fill="#2c313d"/>
-      <rect x="330" y="40" width="230" height="250" fill="#272d38"/>
-      <rect x="470" y="120" width="70" height="170" fill="#12151d"/>
-      <g transform="translate(120,180) scale(.62)"><circle cx="60" cy="26" r="15" fill="#141821"/><path d="M44,46 L76,46 L84,140 L36,140 Z" fill="#141821"/><rect x="44" y="140" width="12" height="40" fill="#141821"/><rect x="64" y="140" width="12" height="40" fill="#141821"/></g>
-      <g transform="translate(190,184) scale(.6)"><circle cx="60" cy="26" r="15" fill="#141821"/><path d="M44,46 L76,46 L84,140 L36,140 Z" fill="#141821"/><rect x="44" y="140" width="12" height="40" fill="#141821"/><rect x="64" y="140" width="12" height="40" fill="#141821"/></g>
-      <g id="odom-figure" transform="translate(475,168) scale(.5)" opacity=".55">
-        <circle cx="60" cy="26" r="15" fill="#0d0f14"/>
-        <path d="M40,46 L80,46 L88,150 L32,150 Z" fill="#0d0f14"/>
-        <rect x="44" y="150" width="13" height="46" fill="#0d0f14"/><rect x="63" y="150" width="13" height="46" fill="#0d0f14"/>
-        <path d="M44,20 L76,20 L80,10 Q60,0 40,12 Z" fill="#0d0f14"/>
-      </g>
-      <text x="20" y="30" font-family="Courier New" font-size="17" fill="#c8cbd4" opacity=".7">SURV. 88-C — MAIN ST</text>
-      <circle id="odom-ring" cx="505" cy="210" r="52" fill="none" stroke="#a3231f" stroke-width="4" opacity="0"/>
-    </svg>`;
-  }
-
-  /* ---------- cold open (animated) ---------- */
-  function coldOpenSVG() {
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 720" preserveAspectRatio="xMidYMax slice">${DEFS}
-      <style>
-        #co-door{transform-box:fill-box;transform-origin:left center;animation:coDoor 1.6s ease-in 1.2s forwards;}
-        @keyframes coDoor{from{transform:scaleX(1)}to{transform:scaleX(.06)}}
-        #co-fig{animation:coWalk 5.5s linear 2.2s both;}
-        @keyframes coWalk{from{transform:translate(430px,640px) scale(.9)}to{transform:translate(820px,640px) scale(.9)}}
-        @keyframes coFade{0%{opacity:0}10%{opacity:1}80%{opacity:1}100%{opacity:0}}
-        #co-fig-inner{animation:coFade 5.5s linear 2.2s both;opacity:0;}
-      </style>
-      <rect width="800" height="720" fill="url(#skyDusk)"/>
-      <rect x="60" y="360" width="680" height="280" fill="#2c313c"/>
-      <rect x="60" y="348" width="680" height="18" fill="#20242e"/>
-      <text x="400" y="334" text-anchor="middle" font-family="Arial Black,Arial" font-size="22" letter-spacing="7" fill="#4b515e">MILLHAVEN SELF-STORAGE</text>
-      <rect x="120" y="452" width="150" height="188" fill="#39404f"/>
-      ${Array.from({length:9},(_,k)=>`<line x1="120" y1="${472+k*19}" x2="270" y2="${472+k*19}" stroke="#30364a" stroke-width="3"/>`).join("")}
-      <rect x="330" y="452" width="150" height="188" fill="#08090c"/>
-      <g id="co-door"><rect x="330" y="452" width="150" height="188" fill="#3a4150"/>
-      ${Array.from({length:9},(_,k)=>`<line x1="330" y1="${472+k*19}" x2="480" y2="${472+k*19}" stroke="#333947" stroke-width="3"/>`).join("")}</g>
-      <rect x="540" y="452" width="150" height="188" fill="#39404f"/>
-      ${Array.from({length:9},(_,k)=>`<line x1="540" y1="${472+k*19}" x2="690" y2="${472+k*19}" stroke="#30364a" stroke-width="3"/>`).join("")}
-      <g id="co-fig"><g id="co-fig-inner">
-        <circle cx="0" cy="-158" r="16" fill="#0d0f14"/>
-        <path d="M-18,-138 L18,-138 L26,-30 L-26,-30 Z" fill="#0d0f14"/>
-        <rect x="-16" y="-32" width="13" height="32" fill="#0d0f14"/><rect x="4" y="-32" width="13" height="32" fill="#0d0f14"/>
-      </g></g>
-      <rect x="0" y="640" width="800" height="80" fill="#1e222a"/>
-      ${puddle(240,70)}${puddle(600,90)}
-      <rect x="0" y="380" width="800" height="340" fill="url(#fogG)"/>
+      <image href="${IMG.prop_odom}" x="0" y="0" width="600" height="400" preserveAspectRatio="xMidYMid slice"/>
+      <text x="20" y="30" font-family="Courier New" font-size="17" fill="#e6e9f0" opacity=".8">SURV. 88-C — MAIN ST</text>
+      <circle id="odom-ring" cx="298" cy="228" r="62" fill="none" stroke="#c22b26" stroke-width="4" opacity="0"/>
     </svg>`;
   }
 
@@ -406,6 +409,9 @@ const PF_ART = (() => {
     i_match: ICONS.match,
     i_ticket: ICONS.receipt,
     i_gas: `<svg viewBox="0 0 40 40"><path d="M9,4 L31,4 L31,32 L27,36 L23,32 L19,36 L15,32 L11,36 L9,32 Z" fill="#f4f0e2"/><rect x="13" y="9" width="14" height="2.4" fill="#4a4234"/><path d="M16,18 Q20,24 20,27 A4,4 0 0 1 12,27 Q12,24 16,18 Z" fill="#a3231f" transform="translate(4,-2)"/></svg>`,
+    i_card: `<svg viewBox="0 0 40 40"><rect x="4" y="10" width="32" height="21" rx="1.5" fill="#f4f0e2" transform="rotate(-3 20 20)"/><line x1="8" y1="17" x2="32" y2="16" stroke="#8a2320" stroke-width="2"/><line x1="8" y1="22" x2="28" y2="21" stroke="#4a4234" stroke-width="1.8"/><line x1="8" y1="26" x2="30" y2="25" stroke="#4a4234" stroke-width="1.8"/></svg>`,
+    i_slip: `<svg viewBox="0 0 40 40"><rect x="7" y="6" width="26" height="28" fill="#e8d8a8"/><rect x="7" y="6" width="26" height="8" fill="#a3231f" opacity=".8"/><text x="20" y="27" text-anchor="middle" font-family="Arial Black" font-size="11" fill="#2a251d">44</text></svg>`,
+    i_map: `<svg viewBox="0 0 40 40"><path d="M6,8 L16,5 L26,9 L34,6 L34,32 L24,35 L14,31 L6,34 Z" fill="#e8e0c8"/><path d="M16,5 L16,31 M26,9 L26,35" stroke="#b9ad8a" stroke-width="1.4" fill="none"/><path d="M10,24 Q18,18 26,22 T33,14" stroke="#3b3327" stroke-width="2" fill="none"/><circle cx="30" cy="12" r="3" fill="none" stroke="#a3231f" stroke-width="2"/></svg>`,
   };
 
   /* ---------- corkboard pin thumbnails ---------- */
@@ -416,6 +422,11 @@ const PF_ART = (() => {
     pin_diner: `<svg viewBox="0 0 100 60"><rect width="100" height="60" fill="#1c202a"/><text x="50" y="26" text-anchor="middle" font-family="Georgia" font-size="13" fill="#ff8d5c">COPPER</text><text x="50" y="42" text-anchor="middle" font-family="Georgia" font-size="13" fill="#c2543f">SPOON</text><rect x="20" y="48" width="60" height="3" fill="#ffb35c" opacity=".5"/></svg>`,
     pin_route: `<svg viewBox="0 0 100 60"><rect width="100" height="60" fill="#22262e"/><path d="M42,60 L48,0 L52,0 L58,60 Z" fill="#33383f"/><path d="M49,50 L51,50 L51,38 L49,38 Z M49,30 L51,30 L51,18 L49,18 Z" fill="#c8cbd4"/><path d="M50,4 L44,14 L56,14 Z" fill="#ffb35c"/><text x="76" y="34" font-family="Arial Black" font-size="10" fill="#8d94a3">9</text></svg>`,
     pin_motel: `<svg viewBox="0 0 100 60"><rect width="100" height="60" fill="#10131a"/><text x="50" y="26" text-anchor="middle" font-family="Georgia" font-size="14" fill="#ffb35c">PRESIDIO</text><rect x="40" y="34" width="20" height="18" fill="#efe6cd"/><text x="50" y="48" text-anchor="middle" font-family="Arial Black" font-size="12" fill="#2a251d">6</text></svg>`,
+    pin_annex: `<svg viewBox="0 0 100 60"><rect width="100" height="60" fill="#1a1e26"/><rect x="12" y="12" width="18" height="40" fill="#2c313c"/><rect x="36" y="12" width="18" height="40" fill="#2c313c"/><rect x="60" y="12" width="18" height="40" fill="#12151c"/><text x="50" y="10" text-anchor="middle" font-family="Arial Black" font-size="8" fill="#8d94a3">AISLE 31</text><rect x="60" y="12" width="18" height="40" fill="#000" opacity=".5"/></svg>`,
+    pin_locker: `<svg viewBox="0 0 100 60"><rect width="100" height="60" fill="#20242c"/><rect x="30" y="8" width="40" height="46" rx="2" fill="#39404f"/><circle cx="60" cy="30" r="3" fill="#c9a86a"/><text x="50" y="24" text-anchor="middle" font-family="Arial Black" font-size="12" fill="#c8cbd4">44</text></svg>`,
+    pin_vol1: `<svg viewBox="0 0 100 60"><rect width="100" height="60" fill="#241f19"/><rect x="30" y="8" width="40" height="46" rx="2" fill="#4a2e28"/><rect x="34" y="12" width="32" height="38" fill="none" stroke="#c9a86a" stroke-width="1.5"/><text x="50" y="35" text-anchor="middle" font-family="Georgia" font-size="12" fill="#c9a86a">1931</text></svg>`,
+    pin_gas: `<svg viewBox="0 0 100 60"><rect width="100" height="60" fill="#171b22"/><rect x="34" y="16" width="14" height="34" rx="2" fill="#3a4150"/><rect x="52" y="16" width="14" height="34" rx="2" fill="#3a4150"/><rect x="37" y="20" width="8" height="8" fill="#ffd9a0" opacity=".8"/><rect x="55" y="20" width="8" height="8" fill="#ffd9a0" opacity=".8"/><text x="50" y="12" text-anchor="middle" font-family="Arial Black" font-size="8" fill="#8d94a3">RTE 9</text></svg>`,
+    pin_lake: `<svg viewBox="0 0 100 60"><rect width="100" height="60" fill="#0c1017"/><path d="M30,36 L50,18 L70,36 Z" fill="#161b26"/><rect x="36" y="36" width="28" height="14" fill="#161b26"/><rect x="55" y="24" width="7" height="8" fill="#ffb35c" opacity=".95"/><path d="M0,52 Q25,48 50,52 T100,52 L100,60 L0,60 Z" fill="#101725"/></svg>`,
   };
 
   /* ---------- title folder ---------- */
@@ -436,8 +447,8 @@ const PF_ART = (() => {
   }
 
   return {
-    kesslerSVG, NPC_ART, NPC_SIZE, SCENES,
-    photoSVG, stingerSVG, coldOpenSVG, folderSVG,
+    kesslerSVG, NPC_ART, NPC_SIZE, SCENES, sceneArt, ART_W, IMG, PORTRAITS,
+    photoSVG, photo1931SVG, stingerSVG, folderSVG,
     ICONS, INV_ICONS, PIN_ART, WARM, SIL,
   };
 })();

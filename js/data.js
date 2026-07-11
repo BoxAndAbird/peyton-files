@@ -11,12 +11,41 @@ const PF_DATA = {
     episode: "EPISODE 1 — THE CLOSING NOTICE",
   },
 
-  /* ---------------- CHAPTERS (linear spine) ----------------
-     cold  → file1 (puzzles: photo, redact) → world1 (storage)
-           → file2 (puzzles: crossref, cipher) → world2 (diner)
-           → file3 (puzzles: timeline, string)  → world3 (motel)
-           → epilogue */
-  chapters: ["cold","file1","world1","file2","world2","file3","world3","epilogue"],
+  /* ---------------- EPISODES ---------------- */
+  episodes: {
+    1: { num:"EPISODE 1", title:"THE CLOSING NOTICE", caseNo:"CASE 0114",   city:"MILLHAVEN",     start:"cold" },
+    2: { num:"EPISODE 2", title:"THE TRANSFER",       caseNo:"CASE 0114-B", city:"LAKE CITY",     start:"cut2" },
+    3: { num:"EPISODE 3", title:"THE KEEPER",         caseNo:"CASE 0114-C", city:"WHITMORE LAKE", start:"cut3" },
+  },
+
+  /* ---------------- CHAPTERS (linear spine, three episodes) ---------------- */
+  chapters: ["cold","file1","world1","file2","world2","file3","world3","ep1end",
+             "cut2","file4","world4","file5","world5","ep2end",
+             "cut3","file6","world6","file7","world7","finale"],
+
+  /* Everything the router needs to know about a chapter. */
+  chapterMeta: {
+    cold:   { type:"cut",   ep:1, cut:"ep1_open", next:"file1" },
+    file1:  { type:"file",  ep:1, puzzles:["photo","redact"],      loc:"storage" },
+    world1: { type:"world", ep:1, scene:"storage",  next:"file2",  doneNr:"world1_done" },
+    file2:  { type:"file",  ep:1, puzzles:["crossref","cipher"],   loc:"diner" },
+    world2: { type:"world", ep:1, scene:"diner",    next:"file3",  doneNr:"world2_done" },
+    file3:  { type:"file",  ep:1, puzzles:["timeline","string"],   loc:"motel" },
+    world3: { type:"world", ep:1, scene:"motel",    next:"ep1end" },
+    ep1end: { type:"inter", ep:1 },
+    cut2:   { type:"cut",   ep:2, cut:"ep2_open", next:"file4" },
+    file4:  { type:"file",  ep:2, puzzles:["redact2","crossref2"], loc:"annex" },
+    world4: { type:"world", ep:2, scene:"annex",    next:"file5",  doneNr:"world4_done" },
+    file5:  { type:"file",  ep:2, puzzles:["cipher2","timeline2"], loc:"terminal" },
+    world5: { type:"world", ep:2, scene:"terminal", next:"ep2end" },
+    ep2end: { type:"inter", ep:2 },
+    cut3:   { type:"cut",   ep:3, cut:"ep3_open", next:"file6" },
+    file6:  { type:"file",  ep:3, puzzles:["photo3","cipher3"],    loc:"gas" },
+    world6: { type:"world", ep:3, scene:"gas",      next:"file7",  doneNr:"world6_done" },
+    file7:  { type:"file",  ep:3, puzzles:["timeline3","string2"], loc:"lakehouse" },
+    world7: { type:"world", ep:3, scene:"lakehouse", next:"finale" },
+    finale: { type:"inter", ep:3 },
+  },
 
   objectives: {
     file1: "Read Odom's file.\nReassemble the torn photo.\nDecode the memo.",
@@ -25,7 +54,17 @@ const PF_DATA = {
     world2: "Talk to the waitress\nat the Copper Spoon.",
     file3: "Reconstruct his last 48 hours.\nRun the string on the board.",
     world3: "Presidio Motor Lodge.\nRoom 6.",
-    epilogue: "—",
+    ep1end: "—",
+    file4: "Read the Lake City wire.\nDecode the routing memo.\nMatch the courier.",
+    world4: "The records annex.\nAisle 31 — night intake.",
+    file5: "Decode the claim slip.\nRebuild Thursday night.",
+    world5: "Union Terminal.\nLocker 44.",
+    ep2end: "—",
+    file6: "Open the package.\nReassemble the 1931 photograph.\nRead the deed margins.",
+    world6: "Route 9 Fuel — north.\nHe filled twice. Ask why.",
+    file7: "Reconstruct his three days.\nRun the last string.",
+    world7: "Whitmore Lake House.\nThe lamp is lit.",
+    finale: "—",
   },
 
   /* ---------------- DOCUMENTS ---------------- */
@@ -161,7 +200,7 @@ WED &nbsp;&nbsp;5:55 AM — CAMERA OFFLINE ("MAINTENANCE")</p>
     {
       id: "d_note", icon: "note", title: "The Note",
       sub: "Room 6. Addressed to me by name.",
-      chapter: "epilogue",
+      chapter: "ep1end",
       body: `
 <h3>Evidence — Handwritten Note</h3>
 <div class="meta">FOUND: NIGHTSTAND, ROOM 6, PRESIDIO MOTOR LODGE<br>HANDWRITING MATCHES THE MATCHBOOK.</div>
@@ -248,14 +287,21 @@ Three days too late, same as always. Tell whoever sent you that punctuality was 
     },
   },
 
-  /* ---------------- BOARD PINS ---------------- */
+  /* ---------------- BOARD PINS (all three episodes) ---------------- */
   pins: [
-    { id:"p_case",    label:"Case 0114 — Voss, P.", art:"pin_folder",  at:"file1",  x:.50, y:.08 },
-    { id:"p_storage", label:"Millhaven Self-Storage — Unit 14", art:"pin_storage", at:"photo", x:.16, y:.30 },
-    { id:"p_pruitt",  label:"G. Pruitt — bookkeeper", art:"pin_gerald", at:"redact", x:.80, y:.28 },
-    { id:"p_diner",   label:"The Copper Spoon — table 6", art:"pin_diner", at:"crossref", x:.30, y:.56 },
-    { id:"p_route9",  label:"Route 9 — north, full tank", art:"pin_route", at:"timeline", x:.72, y:.60 },
-    { id:"p_motel",   label:"Presidio Motor Lodge — Rm 6", art:"pin_motel", at:"string", x:.50, y:.84, loc:true },
+    { id:"p_case",    label:"Case 0114 — Voss, P.", art:"pin_folder",  at:"file1",  x:.50, y:.06 },
+    { id:"p_storage", label:"Millhaven Self-Storage — Unit 14", art:"pin_storage", at:"photo", x:.14, y:.22 },
+    { id:"p_pruitt",  label:"G. Pruitt — bookkeeper", art:"pin_gerald", at:"redact", x:.84, y:.21 },
+    { id:"p_diner",   label:"The Copper Spoon — table 6", art:"pin_diner", at:"crossref", x:.29, y:.38 },
+    { id:"p_route9",  label:"Route 9 — north, full tank", art:"pin_route", at:"timeline", x:.71, y:.37 },
+    { id:"p_motel",   label:"Presidio Motor Lodge — Rm 6", art:"pin_motel", at:"string", x:.50, y:.50, loc:true },
+    /* — episode 2 — */
+    { id:"p_annex",   label:"Lake City Records Annex — Aisle 31", art:"pin_annex", at:"redact2", x:.13, y:.60 },
+    { id:"p_locker",  label:"Union Terminal — Locker 44", art:"pin_locker", at:"vault", x:.87, y:.60 },
+    /* — episode 3 — */
+    { id:"p_vol1",    label:"Ledger Vol. 1 — 1931, L.W.", art:"pin_vol1", at:"photo3", x:.30, y:.76 },
+    { id:"p_gas",     label:"Route 9 Fuel — two full tanks", art:"pin_gas", at:"timeline3", x:.70, y:.76 },
+    { id:"p_lakehouse", label:"Whitmore Lake House — the lamp", art:"pin_lake", at:"string2", x:.50, y:.90, loc:true },
   ],
 
   /* ---------------- INVENTORY ITEMS ---------------- */
@@ -264,6 +310,9 @@ Three days too late, same as always. Tell whoever sent you that punctuality was 
     matchbook: { name:"Matchbook", icon:"i_match", desc:"The Copper Spoon. Writing inside the cover." },
     ticket:    { name:"Guest Check", icon:"i_ticket", desc:"Wed, 6:48 AM. Table 6. Black coffee." },
     gasreceipt:{ name:"Gas Receipt", icon:"i_gas", desc:"Route 9 Fuel, 7:41 AM. Motel ad on the back." },
+    indexcard: { name:"Index Card", icon:"i_card", desc:"PROPERTY OF F. ODOM. Found in box 31-C." },
+    claimslip: { name:"Claim Slip", icon:"i_slip", desc:"Union Terminal, locker 44. Left for me." },
+    greasemap: { name:"County Map", icon:"i_map", desc:"Grease pencil. The lake. 'House line — 0114.'" },
   },
 
   /* ---------------- NARRATION (Kessler internal) ---------------- */
@@ -466,26 +515,28 @@ Three days too late, same as always. Tell whoever sent you that punctuality was 
     },
   },
 
-  /* ---------------- WORLD SCENES ---------------- */
+  /* ---------------- WORLD SCENES ----------------
+     Coordinates are tuned to the painted backdrops (art/bg_*.webp, 1707x720 stage). */
   scenes: {
     storage: {
-      title: "MILLHAVEN SELF-STORAGE — DUSK",
-      width: 2000, spawnX: 130,
+      title: "MILLHAVEN SELF-STORAGE — NIGHT",
+      width: 1707, spawnX: 130, ground: 640,
+      art: "bg_storage", rain: true, haunt: "storage",
       arrive: "world1_arrive",
       hotspots: [
-        { id:"h_units", x:520, y:470, label:"Storage units",
+        { id:"h_gate", x:95, y:450, label:"Gate keypad",
+          examine: "A gate code keypad on a chain-link fence. The log for this thing is going to make somebody's week. Probably mine." },
+        { id:"h_units", x:600, y:395, label:"Storage units",
           examine: "Rolled steel doors, padlocked. Numbers eleven, twelve, thirteen. Nobody's business, twice over." },
-        { id:"h_gate", x:150, y:460, label:"Gate keypad",
-          examine: "A gate code keypad. The log for this thing is going to make somebody's week. Probably mine." },
-        { id:"h_unit14", x:1075, y:460, label:"Unit 14 — door ajar", npcTrigger:"gerald" },
-        { id:"h_matchbook", x:1160, y:600, label:"Something by his shoe", hidden:true,
+        { id:"h_unit14", x:947, y:400, label:"Unit 14 — door ajar", npcTrigger:"gerald" },
+        { id:"h_matchbook", x:880, y:585, label:"Something by his shoe", showFlag:"g_talked",
           pickup:"matchbook", toastText:"Taken: matchbook — THE COPPER SPOON." },
-        { id:"h_boxes", x:1460, y:520, label:"Boxes of ledgers", hidden:true,
+        { id:"h_boxes", x:1040, y:490, label:"Boxes of ledgers", showFlag:"g_talked",
           examine: "Thirty-one boxes, tabbed and cross-tabbed. One sheet comes loose in my hand — and a small card tucked behind it, marked DO NOT COPY.",
           gives: ["d_ledger","d_key"], toastText:"Evidence added: ledger sheet + shorthand key." },
       ],
       npcs: [
-        { id:"gerald", x:1075, name:"GERALD", art:"npc_gerald", hiddenUntil:"h_unit14",
+        { id:"gerald", x:947, name:"GERALD", art:"npc_gerald", hiddenUntil:"h_unit14",
           dialogue:"g_intro", hub:"g_hub",
           itemResponses: { matchbook: "g_match",
             badge: { lines: [["GERALD","I know. I KNOW you're police. You have the posture."]] } },
@@ -494,24 +545,25 @@ Three days too late, same as always. Tell whoever sent you that punctuality was 
     },
     diner: {
       title: "THE COPPER SPOON — MORNING RUSH, POP. 3",
-      width: 1800, spawnX: 120,
+      width: 1707, spawnX: 130, ground: 645,
+      art: "bg_diner", haunt: "diner",
       arrive: "world2_arrive",
       hotspots: [
-        { id:"h_pie", x:1030, y:430, label:"Pie case",
-          examine: "Cherry, apple, and one labeled only “pie.” All three look outstanding. The pie outlives everybody." },
-        { id:"h_booth6", x:1560, y:470, label:"Booth six",
-          examineLocked: "Wiped clean. Reserved. I'll want a reason before I go through his booth.",
-          needs: "d_told_today", npcTalk: "d_booth", givesItem:"gasreceipt",
-          examineAfter: "Nothing else under there but gum and history." },
-        { id:"h_spike", x:800, y:420, label:"Ticket spike",
-          examineLocked: "This morning's tickets, impaled in order. Denise runs a tight spike.",
+        { id:"h_jukebox", x:307, y:470, label:"Jukebox",
+          examine: "Out of order since, judging by the playlist, the late nineties. Probably a mercy." },
+        { id:"h_spike", x:598, y:420, label:"Ticket spike",
+          examineLocked: "This morning's tickets, impaled in order by the register. Denise runs a tight spike.",
           needs: "d_told_today", npcTalk: "d_spike", givesItem:"ticket",
           examineAfter: "The spike keeps the rest of the morning. None of it is his." },
-        { id:"h_jukebox", x:340, y:480, label:"Jukebox",
-          examine: "Out of order since, judging by the playlist, the late nineties. Probably a mercy." },
+        { id:"h_pie", x:875, y:415, label:"Pie case",
+          examine: "Cherry, apple, and one labeled only “pie.” All three look outstanding. The pie outlives everybody." },
+        { id:"h_booth6", x:1620, y:480, label:"Booth six",
+          examineLocked: "The corner booth. Wiped clean. Reserved. I'll want a reason before I go through his booth.",
+          needs: "d_told_today", npcTalk: "d_booth", givesItem:"gasreceipt",
+          examineAfter: "Nothing else under there but gum and history." },
       ],
       npcs: [
-        { id:"denise", x:520, name:"DENISE", art:"npc_denise",
+        { id:"denise", x:500, name:"DENISE", art:"npc_denise",
           dialogue:"d_intro", hub:"d_hub",
           itemResponses: {
             matchbook: { lines: [["DENISE","That's ours. We used to do matches. Then folks kept... lighting things."]] },
@@ -522,20 +574,23 @@ Three days too late, same as always. Tell whoever sent you that punctuality was 
     },
     motel: {
       title: "PRESIDIO MOTOR LODGE — ROOM 6",
-      width: 1700, spawnX: 110,
+      width: 1707, spawnX: 150, ground: 655,
+      art: "bg_motel", haunt: "motel",
       arrive: "world3_arrive",
       hotspots: [
-        { id:"h_bed", x:640, y:480, label:"Stripped bed",
+        { id:"h_shape", x:462, y:380, label:"…the curtain?",
+          examine: "For half a second the window light made a shape at the glass. Standing. Patient. I looked away first, which I'll leave out of the report." },
+        { id:"h_window", x:627, y:255, label:"Window",
+          examine: "A view of the lot through the vacancy sign's glow, and four miles of Route 9 going north into the rain." },
+        { id:"h_bed", x:800, y:500, label:"Stripped bed",
           examine: "Stripped to the mattress. The linens are gone. Not in the trash — gone." },
-        { id:"h_bathroom", x:1520, y:440, label:"Bathroom",
-          examine: "Bleach. Enough that the mirror fogs with it. The drain cover is brand new." },
-        { id:"h_window", x:270, y:420, label:"Window",
-          examine: "A view of the lot, the sign, and four miles of Route 9 going north into the rain." },
-        { id:"h_nightstand", x:1180, y:490, label:"Nightstand — a note", hidden:true,
+        { id:"h_nightstand", x:1080, y:450, label:"Nightstand — a note", showFlag:"w3_gone",
           isNote: true },
+        { id:"h_bathroom", x:1290, y:400, label:"Bathroom",
+          examine: "Bleach. Enough that the mirror fogs with it. The drain cover is brand new." },
       ],
       npcs: [
-        { id:"whitlocks", x:900, name:"ROY & DALE", art:"npc_whitlocks", departFlag:"w3_gone",
+        { id:"whitlocks", x:880, name:"ROY & DALE", art:"npc_whitlocks", departFlag:"w3_gone",
           dialogue:"r_intro", hub:"r_hub",
           itemResponses: {
             badge: { lines: [["ROY","We know, ma'am."],["DALE","We cleaned for the last one of you."]] },
@@ -546,10 +601,36 @@ Three days too late, same as always. Tell whoever sent you that punctuality was 
     },
   },
 
-  /* ---------------- EPILOGUE TEXT ---------------- */
-  epilogue: {
-    ringCard: { k:"INCOMING — LAKE CITY P.D.", n:"“We've got paper. A lot of paper. And a phrase you're going to want to hear in person.”", s:"EPISODE 2 — THE TRANSFER" },
-    endTitle: "THE PEYTON FILES",
-    endLines: "Peyton Voss remains at large.\nThe case remains open.\n\nEpisode 2: THE TRANSFER — Lake City.",
+  /* ---------------- INTERLUDES (end-of-episode beats) ---------------- */
+  interludes: {
+    ep1end: {
+      stampTo: "unresolved",
+      stampToast: "CASE STATUS: ACTIVE → UNRESOLVED",
+      ringNr: "epilogue_ring",
+      ringCard: { k:"INCOMING — LAKE CITY P.D.", n:"“We've got paper. A lot of paper. And a phrase you're going to want to hear in person.”", s:"EPISODE 2 — THE TRANSFER" },
+      stinger: "odom",
+      nextEp: 2,
+      nextLabel: "OPEN EPISODE 2 — THE TRANSFER",
+      next: "cut2",
+    },
+    ep2end: {
+      ringNr: "ep2_ring",
+      ringCard: { k:"MILLHAVEN P.D. — FRONT DESK", n:"“Package for you, no sender. It's ledger paper — a whole volume. Desk sergeant says it smells like lamp oil.”", s:"EPISODE 3 — THE KEEPER" },
+      stinger: "page",
+      nextEp: 3,
+      nextLabel: "OPEN EPISODE 3 — THE KEEPER",
+      next: "cut3",
+    },
+    finale: {
+      stampTo: "pending",
+      stampToast: "CASE STATUS: ACTIVE → PENDING",
+      ringNr: "finale_check",
+      stinger: "check",
+      endCard: {
+        st: "PENDING",
+        title: "THE PEYTON FILES",
+        lines: "Peyton Voss's account is closed.\nThe ledger stays open.\nThe last entry is wet.\n\nCASE 0114 — TO BE CONTINUED.",
+      },
+    },
   },
 };
